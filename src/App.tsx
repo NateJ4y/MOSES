@@ -98,33 +98,28 @@ export function App() {
     playCyberSound('boot');
   }, []);
 
-  // Load demo records handler
-  const handleLoadSampleRecords = useCallback(() => {
-    setLeads(SAMPLE_LEADS);
-    setWarnings(SAMPLE_WARNINGS);
-    setProjects(SAMPLE_PROJECTS);
-    setEmails(SAMPLE_EMAILS);
-    const dealflow = SAMPLE_LEADS.reduce((acc, curr) => acc + curr.estimatedValue, 0);
-    setMessages([
-      {
-        id: `msg-sample-${Date.now()}`,
-        sender: 'MOSES',
-        text: `Demo records loaded. ${SAMPLE_LEADS.length} prospects mapped with R${dealflow.toLocaleString()} in weighted pipeline value.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        intent: 'DEMO_LOADED',
-        structuredResponse: {
-          analysis: `Pipeline restored with ${SAMPLE_LEADS.length} prospects across local e-commerce, logistics, and wellness verticals.`,
-          plan: [
-            'Send interactive concept preview to Kloof Artisanal Roasters',
-            'Queue WhatsApp booking assistant demo for Aura Aesthetics',
-            'Review member onboarding assets for Apex Fitness'
-          ],
-          action: 'Send the Kloof Roasters subscription preview video.'
-        }
+  // Lead records are real user-entered data. Persist them locally until a server database is connected.
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem('moses.leads.v1');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) setLeads(parsed);
       }
-    ]);
-    playCyberSound('response');
+    } catch (error) {
+      console.warn('MOSES lead storage unavailable:', error);
+    }
   }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('moses.leads.v1', JSON.stringify(leads));
+    } catch (error) {
+      console.warn('MOSES could not persist lead records:', error);
+    }
+  }, [leads]);
+
+  // Demo/sample data loading is intentionally disabled. MOSES must never fabricate business records.
 
   // Handle Voice Input
   const handleToggleVoice = useCallback(() => {
@@ -457,7 +452,6 @@ ${targetLead
           {activeSection === 'SETTINGS' && (
             <SettingsView 
               onWipeAllRecords={handleWipeAllRecords}
-              onLoadSampleRecords={handleLoadSampleRecords}
               leadsCount={leads.length}
               projectsCount={projects.length}
               emailsCount={emails.length}
