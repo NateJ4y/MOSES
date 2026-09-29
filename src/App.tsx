@@ -28,6 +28,8 @@ import { DigitalOpsView } from './components/views/DigitalOpsView';
 import { KnowledgeView } from './components/views/KnowledgeView';
 import { MemoryView } from './components/views/MemoryView';
 import { SettingsView } from './components/views/SettingsView';
+import { ClientDNAView } from './components/views/ClientDNAView';
+import { ClientDNA } from './types';
 
 // Audio & Speech
 import { playCyberSound } from './utils/audio';
@@ -41,6 +43,7 @@ export function App() {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [projects, setProjects] = useState<DigitalOpsProject[]>(INITIAL_PROJECTS);
   const [emails, setEmails] = useState<EmailMessage[]>(INITIAL_EMAILS);
+  const [clientDNA, setClientDNA] = useState<ClientDNA[]>([]);
   const [outreachTargetLead, setOutreachTargetLead] = useState<Lead | null>(null);
 
   // AI & Voice State
@@ -90,7 +93,8 @@ export function App() {
     setWarnings([]);
     setProjects([]);
     setEmails([]);
-    try { window.localStorage.removeItem('moses.leads.v1'); window.localStorage.removeItem('moses.projects.v1'); window.localStorage.removeItem('moses.emails.v1'); window.localStorage.removeItem('moses.messages.v1'); } catch {}
+    setClientDNA([]);
+    try { window.localStorage.removeItem('moses.leads.v1'); window.localStorage.removeItem('moses.projects.v1'); window.localStorage.removeItem('moses.emails.v1'); window.localStorage.removeItem('moses.messages.v1'); window.localStorage.removeItem('moses.clientDNA.v1'); } catch {}
     setOutreachTargetLead(null);
     setMessages([
       {
@@ -119,6 +123,7 @@ export function App() {
     setProjects(restore('moses.projects.v1', []));
     setEmails(restore('moses.emails.v1', []));
     setMessages(restore('moses.messages.v1', INITIAL_MESSAGES));
+    setClientDNA(restore('moses.clientDNA.v1', []));
     setIsHydrated(true);
   }, [restore]);
 
@@ -126,6 +131,7 @@ export function App() {
   useEffect(() => { if (isHydrated) persist('moses.projects.v1', projects); }, [projects, persist, isHydrated]);
   useEffect(() => { if (isHydrated) persist('moses.emails.v1', emails); }, [emails, persist, isHydrated]);
   useEffect(() => { if (isHydrated) persist('moses.messages.v1', messages); }, [messages, persist, isHydrated]);
+  useEffect(() => { if (isHydrated) persist('moses.clientDNA.v1', clientDNA); }, [clientDNA, persist, isHydrated]);
 
   // Strategic warnings are derived only from real records.
   useEffect(() => {
@@ -314,6 +320,11 @@ export function App() {
     setLeads(prev => [newLead, ...prev]);
   };
 
+  const handleSaveClientDNA = (record: ClientDNA) => {
+    setClientDNA(prev => prev.some(r => r.id === record.id) ? prev.map(r => r.id === record.id ? record : r) : [record, ...prev]);
+  };
+  const handleDeleteClientDNA = (id: string) => setClientDNA(prev => prev.filter(r => r.id !== id));
+
   const handleAddProject = (project: DigitalOpsProject) => {
     setProjects(prev => [project, ...prev]);
   };
@@ -472,6 +483,8 @@ export function App() {
           {activeSection === 'KNOWLEDGE' && <KnowledgeView />}
 
           {activeSection === 'MEMORY' && <MemoryView />}
+
+          {activeSection === 'CLIENT_DNA' && <ClientDNAView records={clientDNA} onSave={handleSaveClientDNA} onDelete={handleDeleteClientDNA} />}
 
           {activeSection === 'SETTINGS' && (
             <SettingsView 
