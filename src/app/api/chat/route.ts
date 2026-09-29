@@ -107,9 +107,9 @@ I actually threw together a quick 30-second live preview showing how an instant 
 
 Here is your high-leverage battle order for today:
 
-1. **🔴 PRIORITY 1: Follow up with the 3 warm leads in Conversation stage** (Aura Wellness, Nexus Fit, Coastal Legal). Money is made in follow-ups, not tweaking logos.
-2. **🟡 PRIORITY 2: Ship the website concept preview for Kloof Roasters**. 45 minutes max. Don't over-polish it; just show the mechanism.
-3. **🟢 PRIORITY 3: Lock down the WhatsApp automation demo workflow** to showcase on LinkedIn.
+1. **PRIORITY 1: Review actual leads in Conversation / Opportunity stages**. Use only records present in MOSES.
+2. **PRIORITY 2: Complete the next evidence-backed client or prospect action**. Do not invent a target.
+3. **PRIORITY 3: Work on the highest-value verified business task** supported by current OS data.
 
 **Moses Rule**: Do NOT start rebuilding your internal Notion dashboard or tweaking CSS until those 3 follow-ups are dispatched. What are we tackling first?`;
     } else if (lower.includes("audit") || lower.includes("review business") || lower.includes("evaluate")) {
@@ -134,7 +134,7 @@ Paste the link and let's run the diagnostics.`;
 5. **Notification**: Send Telegram / Push alert to Nate with full prospect dossier.
 6. **CRM**: Automatically logs into Pipeline database.
 
-You can inspect and simulate this live in the **SYSTEMS** tab right now. Want me to spin up a custom node layout?`;
+The architecture is documented in the **SYSTEMS** tab, but no live workflow execution is connected yet. I won't claim an automation ran when it did not.`;
     } else if (lower.includes("trend") || lower.includes("research")) {
       intent = "MARKET_RESEARCH";
       reply = `RESEARCH REQUIRED, skeem. Live research is not connected to MOSES yet, so I won't present a trend, statistic, or market claim as current fact. Connect a research source or provide the target/topic and I can work from verified evidence.`;
