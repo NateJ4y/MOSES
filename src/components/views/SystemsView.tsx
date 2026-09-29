@@ -30,30 +30,27 @@ const NODE_COLORS: Record<NodeType, { border: string; bg: string; text: string }
 export const SystemsView: React.FC = () => {
   const [nodes, setNodes] = useState<WorkflowNode[]>(INITIAL_WORKFLOW_NODES);
   const [edges, setEdges] = useState<WorkflowEdge[]>(INITIAL_WORKFLOW_EDGES);
-  const [isRunningSim, setIsRunningSim] = useState(false);
-  const [simActiveNodeIndex, setSimActiveNodeIndex] = useState<number | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
+  const [runStatus, setRunStatus] = useState('NOT CONNECTED');
   const [selectedNode, setSelectedNode] = useState<WorkflowNode | null>(nodes[0] || null);
 
-  const handleRunSimulation = () => {
-    if (isRunningSim) return;
-    setIsRunningSim(true);
-    playCyberSound('boot');
-
-    let current = 0;
-    setSimActiveNodeIndex(current);
-
-    const interval = setInterval(() => {
-      current++;
-      if (current < nodes.length) {
-        setSimActiveNodeIndex(current);
-        playCyberSound('blip');
-      } else {
-        clearInterval(interval);
-        setIsRunningSim(false);
-        setSimActiveNodeIndex(null);
-        playCyberSound('response');
-      }
-    }, 700);
+  const handleRunWorkflow = async () => {
+    if (isRunning) return;
+    setIsRunning(true);
+    setRunStatus('RUNNING');
+    try {
+      const response = await fetch('/api/workflows/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nodes, edges })
+      });
+      const data = await response.json();
+      setRunStatus(data.status || 'ERROR');
+    } catch {
+      setRunStatus('ERROR');
+    } finally {
+      setIsRunning(false);
+    }
   };
 
   const handleAddNode = (type: NodeType) => {
@@ -90,15 +87,15 @@ export const SystemsView: React.FC = () => {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={handleRunSimulation}
-            disabled={isRunningSim}
+            onClick={handleRunWorkflow}
+            disabled={isRunning}
             className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-semibold transition-all shadow-xs cursor-pointer ${
-              isRunningSim
+              isRunning
                 ? 'bg-amber-600 text-white animate-pulse'
                 : 'bg-black hover:bg-zinc-800 text-white'
             }`}
           >
-            <Play size={13} className={isRunningSim ? 'animate-spin' : ''} />
+            <Play size={13} className={isRunning ? 'animate-spin' : ''} />
             <span>{isRunningSim ? 'Simulating Workflow...' : 'Simulate Workflow Run'}</span>
           </button>
         </div>
@@ -138,7 +135,7 @@ export const SystemsView: React.FC = () => {
         {/* Nodes Flow Layout */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 my-auto">
           {nodes.map((node, idx) => {
-            const isSimActive = simActiveNodeIndex === idx;
+            const isSimActive = false;
             const isSelected = selectedNode?.id === node.id;
 
             return (
