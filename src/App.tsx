@@ -7,11 +7,7 @@ import {
   INITIAL_WARNINGS, 
   INITIAL_MESSAGES,
   INITIAL_PROJECTS,
-  INITIAL_EMAILS,
-  SAMPLE_LEADS,
-  SAMPLE_WARNINGS,
-  SAMPLE_PROJECTS,
-  SAMPLE_EMAILS
+  INITIAL_EMAILS
 } from './data/initialData';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
