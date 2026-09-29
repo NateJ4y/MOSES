@@ -16,6 +16,7 @@ import {
 import { DigitalOpsProject } from '../../types';
 import { DIGITAL_OPS_PROJECTS } from '../../data/initialData';
 import { playCyberSound } from '../../utils/audio';
+import { X } from 'lucide-react';
 
 const SERVICE_ICONS: Record<string, React.ElementType> = {
   WEBSITES: Globe,
@@ -27,12 +28,21 @@ const SERVICE_ICONS: Record<string, React.ElementType> = {
 
 interface DigitalOpsViewProps {
   projects?: DigitalOpsProject[];
+  onAddProject?: (project: DigitalOpsProject) => void;
 }
 
 export const DigitalOpsView: React.FC<DigitalOpsViewProps> = ({
-  projects: externalProjects
+  projects: externalProjects,
+  onAddProject
 }) => {
   const [internalProjects] = useState<DigitalOpsProject[]>(DIGITAL_OPS_PROJECTS);
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [client, setClient] = useState('');
+  const [serviceName, setServiceName] = useState('');
+  const [category, setCategory] = useState<DigitalOpsProject['serviceCategory']>('WEBSITES');
+  const [deadline, setDeadline] = useState('');
+  const [notes, setNotes] = useState('');
+  const [nextAction, setNextAction] = useState('');
   const projects = externalProjects !== undefined ? externalProjects : internalProjects;
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
 
@@ -61,7 +71,16 @@ export const DigitalOpsView: React.FC<DigitalOpsViewProps> = ({
         {/* Bandwidth Indicator */}
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 border border-zinc-200 text-xs text-zinc-800 font-semibold">
           <span className={`w-2 h-2 rounded-full ${projects.length === 0 ? 'bg-zinc-400' : 'bg-emerald-500'}`} />
-          <span>Capacity: {projects.length}/4 Active Builds ({projects.length === 0 ? '100% Free' : projects.length <= 3 ? 'Optimal' : 'High'})</span>
+          <span>Capacity: {projects.filter(p => ['DISCOVERY','IN_PROGRESS','REVIEW'].includes(p.status)).length}/4 Active Builds</span>
+          {onAddProject && (
+            <button
+              type="button"
+              onClick={() => { playCyberSound('click'); setIsAddOpen(true); }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-xs font-semibold"
+            >
+              <Plus size={14} /> New Project
+            </button>
+          )}
         </div>
       </div>
 
@@ -195,7 +214,7 @@ export const DigitalOpsView: React.FC<DigitalOpsViewProps> = ({
                   </div>
 
                   <span className="text-xs font-bold text-zinc-900">
-                    R{(project.monthlyRetainer || 3000).toLocaleString()} / mo
+                    {project.monthlyRetainer ? `R${project.monthlyRetainer.toLocaleString()} / mo` : 'VALUE UNKNOWN'}
                   </span>
                 </div>
               </div>
@@ -216,6 +235,42 @@ export const DigitalOpsView: React.FC<DigitalOpsViewProps> = ({
           </div>
         )}
       </div>
+    </div>
+
+      {isAddOpen && onAddProject && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (!client.trim() || !serviceName.trim()) return;
+            const project: DigitalOpsProject = {
+              id: `project-${Date.now()}`,
+              client: client.trim(),
+              serviceCategory: category,
+              serviceName: serviceName.trim(),
+              status: 'DISCOVERY',
+              progress: 0,
+              deadline: deadline.trim() || 'NOT SET',
+              tasks: [],
+              assetsCount: 0,
+              notes: notes.trim() || 'NO NOTES',
+              nextAction: nextAction.trim() || 'RESEARCH REQUIRED',
+              capacityImpact: 'LOW'
+            };
+            onAddProject(project);
+            setClient(''); setServiceName(''); setDeadline(''); setNotes(''); setNextAction(''); setIsAddOpen(false);
+            playCyberSound('boot');
+          }} className="w-full max-w-lg bg-white rounded-3xl border border-zinc-200 p-6 shadow-2xl space-y-3">
+            <div className="flex items-center justify-between"><h3 className="font-bold">New Client Project</h3><button type="button" onClick={() => setIsAddOpen(false)}><X size={16}/></button></div>
+            <input required value={client} onChange={e=>setClient(e.target.value)} placeholder="Client name" className="w-full p-3 rounded-xl border border-zinc-200" />
+            <input required value={serviceName} onChange={e=>setServiceName(e.target.value)} placeholder="Service / project name" className="w-full p-3 rounded-xl border border-zinc-200" />
+            <select value={category} onChange={e=>setCategory(e.target.value as DigitalOpsProject['serviceCategory'])} className="w-full p-3 rounded-xl border border-zinc-200"><option value="WEBSITES">Websites</option><option value="SOCIAL_MEDIA">Social Media</option><option value="GRAPHIC_DESIGN">Graphic Design</option><option value="AUTOMATION">Automation</option><option value="CLIENT_PROJECTS">Client Projects</option></select>
+            <input value={deadline} onChange={e=>setDeadline(e.target.value)} placeholder="Deadline (optional)" className="w-full p-3 rounded-xl border border-zinc-200" />
+            <textarea value={nextAction} onChange={e=>setNextAction(e.target.value)} placeholder="Next action" className="w-full p-3 rounded-xl border border-zinc-200" />
+            <textarea value={notes} onChange={e=>setNotes(e.target.value)} placeholder="Notes" className="w-full p-3 rounded-xl border border-zinc-200" />
+            <button className="w-full py-3 rounded-xl bg-black text-white font-semibold">Create Project</button>
+          </form>
+        </div>
+      )}
     </div>
   );
 };
