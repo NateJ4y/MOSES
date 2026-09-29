@@ -26,6 +26,9 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
 }) => {
   const [items, setItems] = useState<ResearchItem[]>(RESEARCH_ITEMS);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [query, setQuery] = useState('');
+  const [liveResult, setLiveResult] = useState('');
+  const [researchStatus, setResearchStatus] = useState<'IDLE' | 'RESEARCHING' | 'ONLINE' | 'NOT CONNECTED' | 'ERROR'>('IDLE');
 
   const categories = ['ALL', 'AI', 'MARKETING', 'WEBSITES', 'SOCIAL_MEDIA', 'AUTOMATION', 'BUSINESS', 'DESIGN', 'TECHNOLOGY'];
 
@@ -62,6 +65,33 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
         </div>
       </div>
 
+      <form onSubmit={async (e) => {
+        e.preventDefault();
+        if (!query.trim()) return;
+        setResearchStatus('RESEARCHING');
+        setLiveResult('');
+        try {
+          const res = await fetch('/api/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ topic: query.trim() }) });
+          const data = await res.json();
+          setLiveResult(data.reply || 'No verified result returned.');
+          setResearchStatus(data.status || 'ERROR');
+        } catch {
+          setResearchStatus('ERROR');
+          setLiveResult('Research failed. No result was fabricated.');
+        }
+      }} className="p-4 rounded-2xl bg-zinc-50 border border-zinc-200 flex flex-col sm:flex-row gap-2">
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Research a current market, competitor, technology, or trend..." className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-zinc-200 text-xs focus:outline-none" />
+        <button className="px-5 py-2.5 rounded-xl bg-black text-white text-xs font-semibold" disabled={researchStatus === 'RESEARCHING'}>
+          {researchStatus === 'RESEARCHING' ? 'Researching…' : 'Run Live Research'}
+        </button>
+      </form>
+      {liveResult && (
+        <div className="p-5 rounded-2xl bg-white border border-zinc-200 shadow-xs whitespace-pre-wrap text-xs text-zinc-700 leading-relaxed">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-2">LIVE RESEARCH — {researchStatus}</div>
+          {liveResult}
+        </div>
+      )}
+
       {/* Category Filter Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
         {categories.map((cat) => (
@@ -83,6 +113,9 @@ export const ResearchView: React.FC<ResearchViewProps> = ({
       </div>
 
       {/* Research Cards Grid */}
+      {filteredItems.length === 0 && !liveResult && (
+        <div className="p-10 rounded-3xl bg-zinc-50 border border-dashed border-zinc-200 text-center text-xs text-zinc-500">NO DATA — run live research above. MOSES does not preload market claims.</div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {filteredItems.map((item) => {
           return (
