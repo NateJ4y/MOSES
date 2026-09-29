@@ -11,7 +11,8 @@ import {
   GitBranch, 
   Layers, 
   BookOpen, 
-  Database, 
+  Database,
+  Fingerprint, 
   Settings,
   Cpu,
   ChevronLeft,
@@ -58,6 +59,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'DIGITAL_OPERATIONS', label: 'DIGITAL OPERATIONS', shortLabel: 'OPS', icon: Layers },
   { id: 'KNOWLEDGE', label: 'KNOWLEDGE', shortLabel: 'DOCS', icon: BookOpen },
   { id: 'MEMORY', label: 'MEMORY', shortLabel: 'MEMORY', icon: Database },
+  { id: 'CLIENT_DNA', label: 'CLIENT DNA', shortLabel: 'DNA', icon: Fingerprint },
   { id: 'SETTINGS', label: 'SETTINGS', shortLabel: 'CONFIG', icon: Settings },
 ];
 
