@@ -66,12 +66,30 @@ export function App() {
     return () => window.removeEventListener('click', handleFirstClick);
   }, []);
 
+  const persist = useCallback((key: string, value: unknown) => {
+    try { window.localStorage.setItem(key, JSON.stringify(value)); }
+    catch (error) { console.warn(`MOSES could not persist ${key}:`, error); }
+  }, []);
+
+  const restore = useCallback(<T,>(key: string, fallback: T): T => {
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return fallback;
+      const parsed = JSON.parse(raw);
+      return parsed as T;
+    } catch (error) {
+      console.warn(`MOSES could not restore ${key}:`, error);
+      return fallback;
+    }
+  }, []);
+
   // Wipe all records handler (Default OS Mode)
   const handleWipeAllRecords = useCallback(() => {
     setLeads([]);
     setWarnings([]);
     setProjects([]);
     setEmails([]);
+    try { window.localStorage.removeItem('moses.leads.v1'); window.localStorage.removeItem('moses.projects.v1'); window.localStorage.removeItem('moses.emails.v1'); window.localStorage.removeItem('moses.messages.v1'); } catch {}
     setOutreachTargetLead(null);
     setMessages([
       {
@@ -94,28 +112,63 @@ export function App() {
     playCyberSound('boot');
   }, []);
 
-  // Lead records are real user-entered data. Persist them locally until a server database is connected.
+  // Restore all user-owned records. No demo/sample records are loaded.
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem('moses.leads.v1');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) setLeads(parsed);
-      }
-    } catch (error) {
-      console.warn('MOSES lead storage unavailable:', error);
-    }
-  }, []);
+    setLeads(restore('moses.leads.v1', []));
+    setProjects(restore('moses.projects.v1', []));
+    setEmails(restore('moses.emails.v1', []));
+    setMessages(restore('moses.messages.v1', INITIAL_MESSAGES));
+  }, [restore]);
 
+  useEffect(() => persist('moses.leads.v1', leads), [leads, persist]);
+  useEffect(() => persist('moses.projects.v1', projects), [projects, persist]);
+  useEffect(() => persist('moses.emails.v1', emails), [emails, persist]);
+  useEffect(() => persist('moses.messages.v1', messages), [messages, persist]);
+
+  // Strategic warnings are derived only from real records.
   useEffect(() => {
-    try {
-      window.localStorage.setItem('moses.leads.v1', JSON.stringify(leads));
-    } catch (error) {
-      console.warn('MOSES could not persist lead records:', error);
+    const next: StrategicWarning[] = [];
+    const now = new Date();
+    const overdue = leads.filter(l => {
+      const d = l.followUpDate?.trim();
+      return d && d !== 'NOT SET' && /overdue|today/i.test(d);
+    });
+    if (overdue.length) {
+      next.push({
+        id: 'derived-follow-up-overdue',
+        title: 'FOLLOW-UP ATTENTION',
+        code: 'FOLLOW_UP_OVERDUE',
+        severity: 'HIGH',
+        description: `${overdue.length} real lead record(s) indicate follow-up attention is required.`,
+        recommendation: 'Review the affected lead records and complete or reschedule the next action.'
+      });
     }
-  }, [leads]);
+    const activeProjects = projects.filter(p => ['DISCOVERY','IN_PROGRESS','REVIEW'].includes(p.status));
+    if (activeProjects.length >= 4) {
+      next.push({
+        id: 'derived-capacity-risk',
+        title: 'CAPACITY RISK',
+        code: 'CAPACITY_RISK',
+        severity: 'HIGH',
+        description: `${activeProjects.length} active project records are currently in delivery.`,
+        recommendation: 'Review workload before accepting another high-touch build.'
+      });
+    }
+    if (activeProjects.some(p => p.capacityImpact === 'HIGH')) {
+      next.push({
+        id: 'derived-project-capacity',
+        title: 'HIGH-SCOPE PROJECT',
+        code: 'CAPACITY_RISK',
+        severity: 'MEDIUM',
+        description: 'At least one real project is marked HIGH capacity impact.',
+        recommendation: 'Review scope, deadline and task load before committing additional work.'
+      });
+    }
+    setWarnings(next);
+    void now;
+  }, [leads, projects]);
 
-  // Demo/sample data loading is intentionally disabled. MOSES must never fabricate business records.
+  // No demo/sample loading is permitted.
 
   // Handle Voice Input
   const handleToggleVoice = useCallback(() => {
@@ -215,54 +268,22 @@ export function App() {
 
     } catch (err) {
       console.error('Chat error:', err);
-      // Fallback message
-      const activeVal = leads.filter(l => l.status !== 'LOST' && l.status !== 'WON').reduce((a, c) => a + c.estimatedValue, 0);
-      const followUps = leads.filter(l => (l.followUpDate || '').includes('Today')).length;
-      const targetLead = leads[0];
-
       const fallbackMsg: ChatMessage = {
         id: `moses-${Date.now()}`,
         sender: 'MOSES',
-        text: `Understood, Nate. Operating in high-leverage mode. 
-
-// STRATEGIC ANALYSIS:
-${leads.length > 0 
-  ? `Pipeline active value is R${activeVal.toLocaleString()} with ${followUps} follow-ups queued.` 
-  : `Operating system is in default standby mode with zero active pipeline records.`}
-
-// NEXT IMMEDIATE ACTION:
-${targetLead 
-  ? `Follow up with ${targetLead.business} using the Skeem concept preview method.` 
-  : `Add a target business in Business Development or ask Moses: "Find high-probability prospects".`}`,
+        text: `MOSES Core is unavailable right now. I will not fabricate a business answer to compensate.\\n\\nSTATUS: NOT CONNECTED / ERROR\\n\\nYour local records remain intact. Check the Gemini API configuration or server logs, then retry the command.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        intent: 'TACTICAL_EXECUTION',
+        intent: 'SYSTEM_ERROR',
         structuredResponse: {
-          analysis: leads.length > 0
-            ? 'Prospects evaluated. High conversion probability on qualified targets.'
-            : 'Default clean slate. Ready for new prospect ingestion.',
-          plan: leads.length > 0
-            ? [
-                `Send interactive preview link to ${targetLead?.business || 'lead'}`,
-                'Protect solo build capacity (max 4 concurrent retainers)'
-              ]
-            : [
-                'Identify target SMBs with high traffic but poor conversion',
-                'Generate free 45-second concept previews (Skeem method)',
-                'Cap active builds at 3-4 retainers'
-              ],
-          action: targetLead 
-            ? `Follow up with ${targetLead.business} today.` 
-            : 'Add a new prospect or prompt Moses to find leads.'
+          analysis: 'AI response could not be verified.',
+          plan: ['Check GEMINI_API_KEY configuration', 'Retry the command', 'Use the relevant OS module directly if urgent'],
+          action: 'Reconnect MOSES Core and retry.'
         }
       };
-
       setMessages(prev => [...prev, fallbackMsg]);
       setAiState('RESPONDING');
       playCyberSound('response');
-
-      setTimeout(() => {
-        setAiState('IDLE');
-      }, 3000);
+      setTimeout(() => setAiState('IDLE'), 3000);
     } finally {
       setIsProcessing(false);
     }
