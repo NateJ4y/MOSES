@@ -141,14 +141,8 @@ export const WhatsAppView: React.FC = () => {
           <p className="text-xs text-zinc-600">
             When a prospect finishes the automated qualifying questions, Moses triggers a webhook to ping Nate's phone.
           </p>
-          <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <div className="font-bold text-zinc-900">Aura Clinic (Dr. Sarah Ndlovu) - R4,500 Retainer</div>
-              <div className="text-[11px] text-zinc-600 mt-0.5">Qualification complete: 4/4 questions answered. Ready for Nate phone consult.</div>
-            </div>
-            <button className="px-4 py-2 rounded-full bg-black text-white text-xs font-semibold cursor-pointer shrink-0">
-              Claim Handoff
-            </button>
+          <div className="p-6 rounded-xl bg-zinc-50 border border-dashed border-zinc-200 text-center text-xs text-zinc-500">
+            NO DATA — no verified WhatsApp handoffs have been received.
           </div>
         </div>
       )}
@@ -162,12 +156,9 @@ export const WhatsAppView: React.FC = () => {
           <p className="text-zinc-600">
             Copy this endpoint into your Meta Developer Dashboard or n8n workflow once live webhook credentials are provisioned.
           </p>
-          <div className="p-3.5 rounded-xl bg-zinc-100 border border-zinc-200 text-zinc-900 font-mono text-xs">
-            POST https://api.coalescedigital.co.za/v1/webhooks/whatsapp/inbound
+          <div className="p-3.5 rounded-xl bg-zinc-100 border border-dashed border-zinc-200 text-zinc-500 font-mono text-xs">
+            NOT CONFIGURED — set a real Meta/n8n webhook endpoint and verification secret in deployment configuration.
           </div>
-          <p className="text-[11px] text-zinc-500">
-            Verification token: <code className="text-zinc-800 font-mono">coalesce_os_meta_verify_token_v2</code>
-          </p>
         </div>
       )}
     </div>
