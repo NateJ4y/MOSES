@@ -23,7 +23,7 @@ export type LeadStatus =
   | 'WON'
   | 'LOST';
 
-export type LeadScoreTier = 'HOT' | 'WARM' | 'COLD' | 'POOR_FIT';
+export type LeadScoreTier = 'HOT' | 'WARM' | 'COLD' | 'POOR_FIT' | 'UNSCORED';
 
 export interface LeadSocialLinks {
   instagram?: string;
