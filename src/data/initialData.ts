@@ -200,48 +200,8 @@ export const INITIAL_WHATSAPP_FLOWS: WhatsAppFlow[] = [
 ];
 
 // Market Research & Intelligence Insights
-export const RESEARCH_ITEMS: ResearchItem[] = [
-  {
-    id: 'res-1',
-    category: 'AI',
-    trend: '24/7 WhatsApp AI Customer Support & Booking for Service SMBs',
-    whyItMatters: 'WhatsApp maintains 96% open rates in South Africa & Africa. Small clinics, salons, and mechanics lose warm leads when receptionists are off-duty.',
-    opportunityForCoalesce: 'Package turnkey WhatsApp AI Lead Qualification & Appointment Bots as a recurring monthly retainer (R2,500 - R4,500/mo).',
-    recommendedAction: 'Build interactive demo on Coalesce OS and send 10 targeted DMs to local clinic founders with a free concept test.',
-    date: 'Active',
-    urgency: 'HIGH'
-  },
-  {
-    id: 'res-2',
-    category: 'WEBSITES',
-    trend: 'Headless / High-Speed Jamstack vs Clunky Legacy WordPress for SMBs',
-    whyItMatters: 'Legacy WP plugins create security vulnerabilities and 4+ second load times, slashing mobile conversion rates by 50%.',
-    opportunityForCoalesce: 'Offer ultra-fast lightweight websites with integrated lead capture and zero bloat.',
-    recommendedAction: 'Audit local businesses on PageSpeed Insights and lead with speed benchmark data in outreach.',
-    date: 'Active',
-    urgency: 'HIGH'
-  },
-  {
-    id: 'res-3',
-    category: 'AUTOMATION',
-    trend: 'Low-Code Webhook Pipelines (n8n / Make) Replacing Manual Admin in SMBs',
-    whyItMatters: 'Business owners spend 15+ hours weekly copy-pasting customer data between emails, spreadsheets, and invoices.',
-    opportunityForCoalesce: 'Position "System Building" over generic freelancing. Sell time-savings and administrative freedom.',
-    recommendedAction: 'Document a 3-step automation blueprint and publish it as an actionable LinkedIn teardown.',
-    date: 'Active',
-    urgency: 'MEDIUM'
-  },
-  {
-    id: 'res-4',
-    category: 'MARKETING',
-    trend: 'The "Concept-First" Soft Pitch vs Hard Cold Pitching',
-    whyItMatters: 'Cold email replies have dropped 40% due to spam filters. High-value prospects only respond when given tangible value upfront.',
-    opportunityForCoalesce: 'Deploy the Coalesce "Skeem" method: deliver a 45-second loom or live preview link with zero obligation.',
-    recommendedAction: 'Standardize Figma / code preview templates for fast 20-minute turnaround per lead.',
-    date: 'Active',
-    urgency: 'HIGH'
-  }
-];
+// Live research must come from a connected research source. No fabricated insights are loaded.
+export const RESEARCH_ITEMS: ResearchItem[] = [];
 
 // Initial Default Boot Chat Message
 export const INITIAL_MESSAGES: ChatMessage[] = [
@@ -260,10 +220,10 @@ OS is in default standby mode. Pipeline records cleared. System ready for prospe
       analysis: 'Operating system is in default clean mode. Zero active pipeline records or pending bottlenecks.',
       plan: [
         'Add a new target business to the pipeline',
-        'Command Moses to find high-probability prospects',
+        'Connect a research source, then ask Moses to analyze verified prospects',
         'Configure outreach templates and service packages'
       ],
-      action: 'Ready for new prospect intake or tactical prompt.'
+      action: 'Ready for verified data, connected integrations, or a tactical prompt.'
     }
   }
 ];
