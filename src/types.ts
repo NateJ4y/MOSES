@@ -11,6 +11,7 @@ export type NavSection =
   | 'DIGITAL_OPERATIONS'
   | 'KNOWLEDGE'
   | 'MEMORY'
+  | 'CLIENT_DNA'
   | 'SETTINGS';
 
 export type LeadStatus =
@@ -172,6 +173,23 @@ export interface KnowledgeDoc {
   content: string;
   tags: string[];
   lastUpdated: string;
+}
+
+export interface ClientDNA {
+  id: string;
+  clientId: string;
+  businessName: string;
+  position: string;
+  usp: string;
+  targetAudience: string;
+  brandVoice: string;
+  visualSystem: string;
+  goals: string;
+  offers: string;
+  proof: string;
+  constraints: string;
+  notes: string;
+  updatedAt: string;
 }
 
 export interface ChatMessage {
