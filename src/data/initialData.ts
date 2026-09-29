@@ -183,7 +183,7 @@ export const INITIAL_WHATSAPP_FLOWS: WhatsAppFlow[] = [
     id: 'wf-1',
     name: 'Instant Lead Qualifier & Booking Bot',
     description: 'Greets inbound prospects in < 5s, identifies their primary bottleneck, presents service options, and books a call directly on Nate\'s calendar.',
-    status: 'ACTIVE',
+    status: 'STANDBY',
     trigger: 'Inbound message on WhatsApp Webhook',
     stepsCount: 5,
     totalLeadsQualified: 0
@@ -191,7 +191,7 @@ export const INITIAL_WHATSAPP_FLOWS: WhatsAppFlow[] = [
   {
     id: 'wf-2',
     name: 'Abandoned Quote / Cart Follow-Up Engine',
-    description: 'Triggers 2 hours after a lead interacts with the web quote widget but does not complete submission. Offers friendly assistance with no pressure.',
+    description: 'Blueprint only. Requires a connected quote event source and WhatsApp provider before activation.',
     status: 'STANDBY',
     trigger: 'Webhook: quote_abandoned_event',
     stepsCount: 3,
