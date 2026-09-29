@@ -102,109 +102,12 @@ export const WhatsAppView: React.FC = () => {
 
       {/* Main Content Area */}
       {activeTab === 'SIMULATOR' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
-          {/* Left: Bot Spec & Flow Overview */}
-          <div className="lg:col-span-5 space-y-4">
-            <div className="p-5 rounded-2xl bg-white border border-zinc-200 shadow-xs space-y-3.5">
-              <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider flex items-center gap-2">
-                <Bot size={15} />
-                Lead Qualification Protocol
-              </h3>
-
-              <p className="text-xs text-zinc-600 leading-relaxed font-normal">
-                This simulated flow demonstrates how Moses auto-qualifies WhatsApp prospects before alerting Nate.
-              </p>
-
-              {/* 6 Stage Blueprint */}
-              <div className="space-y-2 text-xs pt-1">
-                {[
-                  { step: '1. New Lead', desc: 'Inbound WhatsApp trigger from ad / QR code' },
-                  { step: '2. Initial Greeting', desc: 'Sub-5s friendly intro & company check' },
-                  { step: '3. Pain Point ID', desc: 'Identifies bottleneck (website, booking, admin)' },
-                  { step: '4. Service Interest', desc: 'Presents automated solution preview' },
-                  { step: '5. Scope Capture', desc: 'Estimates timeline & budget scope' },
-                  { step: '6. Human Handoff', desc: 'Pings Nate with warm prospect dossier' }
-                ].map((s, idx) => (
-                  <div key={idx} className="p-2.5 rounded-xl bg-zinc-50 border border-zinc-200 flex items-start gap-2.5">
-                    <span className="text-[11px] font-bold text-zinc-900 shrink-0">{s.step}</span>
-                    <span className="text-[11px] text-zinc-600">{s.desc}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Phone Simulator Container */}
-          <div className="lg:col-span-7 flex justify-center">
-            <div className="w-full max-w-md rounded-3xl bg-zinc-900 border border-zinc-800 shadow-xl flex flex-col h-[520px] overflow-hidden">
-              {/* WhatsApp App Bar */}
-              <div className="p-3.5 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between text-white">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-xs">
-                    CD
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold">Coalesce Digital AI Assistant</div>
-                    <div className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                      <span>Online &bull; 24/7 Automated</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-zinc-400 text-xs">
-                  <Smartphone size={16} />
-                </div>
-              </div>
-
-              {/* Chat Stream */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#0d1418] scrollbar-thin text-xs">
-                <div className="text-center my-1">
-                  <span className="px-2.5 py-0.5 rounded-full bg-zinc-800/80 text-[10px] text-zinc-400">
-                    🔒 Messages are end-to-end encrypted
-                  </span>
-                </div>
-
-                {simMessages.map((msg, idx) => {
-                  const isBot = msg.sender === 'BOT';
-                  return (
-                    <div key={idx} className={`flex flex-col ${isBot ? 'items-start' : 'items-end'}`}>
-                      <div
-                        className={`max-w-[84%] p-3 rounded-2xl leading-relaxed ${
-                          isBot
-                            ? 'bg-[#1f2c34] text-zinc-100 rounded-tl-none border border-zinc-700/50'
-                            : 'bg-[#005c4b] text-white rounded-tr-none'
-                        }`}
-                      >
-                        <p>{msg.text}</p>
-                        <div className="text-[9px] text-zinc-400 text-right mt-1 flex items-center justify-end gap-1 font-medium">
-                          <span>{msg.time}</span>
-                          {!isBot && <CheckCheck size={11} className="text-cyan-400" />}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Chat Input */}
-              <form onSubmit={handleSendSim} className="p-2.5 bg-zinc-950 border-t border-zinc-800 flex items-center gap-2">
-                <input
-                  type="text"
-                  value={testInput}
-                  onChange={(e) => setTestInput(e.target.value)}
-                  placeholder="Type a lead reply..."
-                  className="flex-1 p-2.5 rounded-xl bg-zinc-900 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-zinc-600 font-sans"
-                />
-                <button
-                  type="submit"
-                  className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer transition-colors"
-                >
-                  <Send size={15} />
-                </button>
-              </form>
-            </div>
-          </div>
+        <div className="p-8 rounded-3xl bg-zinc-50 border border-dashed border-zinc-300 text-center">
+          <AlertCircle size={24} className="mx-auto text-zinc-500 mb-3" />
+          <h3 className="text-sm font-bold text-zinc-900">Conversation Simulator Disabled</h3>
+          <p className="text-xs text-zinc-500 max-w-lg mx-auto mt-2">
+            MOSES does not fabricate WhatsApp conversations. Connect Meta WhatsApp Cloud API or an n8n webhook before live conversations can appear here.
+          </p>
         </div>
       )}
 
