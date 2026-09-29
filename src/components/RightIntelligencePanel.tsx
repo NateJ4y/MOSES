@@ -51,9 +51,16 @@ export const RightIntelligencePanel: React.FC<RightIntelligencePanelProps> = ({
   const safeWarnings = warnings || [];
   const safeProjects = projects || [];
 
-  const hotLeads = safeLeads.filter(l => l.scoreTier === 'HOT' || (l.followUpDate && l.followUpDate.includes('Today')));
-  const activeProjects = safeProjects.filter(p => p.status === 'IN_PROGRESS' || p.status === 'REVIEW');
-  const topPriorityLead = hotLeads[0] || safeLeads[0] || null;
+  const stageWeight: Record<string, number> = { PROPOSAL: 8, OPPORTUNITY: 7, CONVERSATION: 6, CONTACTED: 5, QUALIFIED: 4, NEW: 3, LOST: 0, WON: 0 };
+  const priorityScore = (lead: Lead) => {
+    const followUp = /today|overdue/i.test(lead.followUpDate || '') ? 20 : 0;
+    const score = lead.scoreTier === 'UNSCORED' ? 0 : lead.leadScore;
+    return followUp + score + (stageWeight[lead.status] || 0) + Math.min(lead.estimatedValue || 0, 100000) / 10000;
+  };
+  const rankedLeads = [...safeLeads].sort((a,b) => priorityScore(b) - priorityScore(a));
+  const hotLeads = rankedLeads.filter(l => l.scoreTier === 'HOT' || /today|overdue/i.test(l.followUpDate || ''));
+  const activeProjects = safeProjects.filter(p => ['IN_PROGRESS','REVIEW','DISCOVERY'].includes(p.status));
+  const topPriorityLead = rankedLeads[0] || null;
 
   const handleNav = (section: NavSection) => {
     if (onNavigate) {
@@ -109,7 +116,7 @@ export const RightIntelligencePanel: React.FC<RightIntelligencePanelProps> = ({
               </p>
               <div className="mt-2.5 pt-2 border-t border-zinc-200 flex items-center justify-between">
                 <span className="text-[10px] text-zinc-500">Tactical Impact:</span>
-                <span className="text-[10px] font-bold text-emerald-600">R{topPriorityLead.estimatedValue.toLocaleString()} Pipeline</span>
+                <span className="text-[10px] font-bold text-emerald-600">{topPriorityLead.estimatedValue ? `R${topPriorityLead.estimatedValue.toLocaleString()} Pipeline` : 'VALUE UNKNOWN'}</span>
               </div>
             </>
           ) : (
