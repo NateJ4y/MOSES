@@ -64,7 +64,7 @@ export const OutreachView: React.FC<OutreachViewProps> = ({ leads, initialLead }
 
 Noticed one quick bottleneck on your profile link—mobile visitors have to manually email to get quotes, based on the verified issue in the lead record.
 
-I actually threw together a quick 45-second live concept preview showing how an automated WhatsApp booking flow + instant quote calculator would look for ${bizName}.
+I can share a concept preview if one has actually been prepared for ${bizName}.
 
 Zero obligation at all, just thought it'd be super valuable for your team. Want me to drop the preview link here?`;
         } else if (selectedStage === 'CONVERSATION') {
@@ -94,7 +94,7 @@ Coalesce Digital // Digital Systems Specialist`;
       } else if (activeChannel === 'LINKEDIN') {
         copy = `Hi ${contact}, noticed your team at ${bizName} is scaling operations in ${currentLead?.industry || 'your sector'}. 
 
-I specialize in building automated digital intake systems for growing businesses. Put together a 60-second prototype showing how ${bizName} could automate customer qualification and eliminate 10+ hours of weekly admin.
+I specialize in building automated digital intake systems for growing businesses. I can prepare a short concept preview based on the verified issue in the lead record.
 
 Happy to share the preview link if you're open to taking a 30-second look. Zero pressure either way!`;
       } else {
@@ -103,7 +103,7 @@ Happy to share the preview link if you're open to taking a 30-second look. Zero 
 
 Quick note regarding ${bizName}: I put together a working WhatsApp booking & quote prototype specifically tailored for your services.
 
-Here is a 30-second interactive test link: coalesce-preview.io/demo-${bizName.toLowerCase().replace(/\s+/g, '')}
+[VERIFIED PREVIEW URL — add only if one exists]
 
 Feel free to test the bot flow and let me know if it solves the after-hours inquiry problem!`;
       }
