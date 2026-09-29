@@ -20,35 +20,8 @@ import { INITIAL_WHATSAPP_FLOWS } from '../../data/initialData';
 import { playCyberSound } from '../../utils/audio';
 
 export const WhatsAppView: React.FC = () => {
-  const [flows, setFlows] = useState<WhatsAppFlow[]>(INITIAL_WHATSAPP_FLOWS);
-  const [simMessages, setSimMessages] = useState<{ sender: 'BOT' | 'USER'; text: string; time: string }[]>([
-    { sender: 'USER', text: 'Hi, I need help with our clinic booking site.', time: '10:02' },
-    { sender: 'BOT', text: 'Hey there! 👋 Welcome to Coalesce Digital intake. What is the biggest challenge with your current setup?', time: '10:02' },
-    { sender: 'USER', text: 'We lose clients after hours because nobody is answering phone calls.', time: '10:03' },
-    { sender: 'BOT', text: 'Got it. A 24/7 WhatsApp AI receptionist handles booking and deposits automatically. Would you like a 30-sec live demo for your clinic?', time: '10:03' }
-  ]);
-  const [testInput, setTestInput] = useState('');
-  const [activeTab, setActiveTab] = useState<'FLOWS' | 'SIMULATOR' | 'HANDOFFS' | 'WEBHOOK_CONFIG'>('SIMULATOR');
-
-  const handleSendSim = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!testInput.trim()) return;
-
-    const userMsg = testInput;
-    setSimMessages(prev => [...prev, { sender: 'USER', text: userMsg, time: 'Now' }]);
-    setTestInput('');
-    playCyberSound('click');
-
-    // Bot automatic response simulation
-    setTimeout(() => {
-      let botReply = "Understood. That matches our high-impact AI Automation system. Let's schedule a 10-minute walkthrough with Nate.";
-      if (userMsg.toLowerCase().includes('price') || userMsg.toLowerCase().includes('cost')) {
-        botReply = "Our systems start with a low-friction setup + monthly optimization retainer. Let me connect you directly with Nate for an exact spec.";
-      }
-      setSimMessages(prev => [...prev, { sender: 'BOT', text: botReply, time: 'Now' }]);
-      playCyberSound('response');
-    }, 500);
-  };
+  const [flows] = useState<WhatsAppFlow[]>(INITIAL_WHATSAPP_FLOWS);
+  const [activeTab, setActiveTab] = useState<'FLOWS' | 'SIMULATOR' | 'HANDOFFS' | 'WEBHOOK_CONFIG'>('FLOWS');
 
   return (
     <div className="h-full flex flex-col p-4 sm:p-8 max-w-7xl mx-auto font-sans overflow-y-auto scrollbar-thin space-y-6 bg-white text-zinc-900">
