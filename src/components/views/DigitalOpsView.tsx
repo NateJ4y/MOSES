@@ -235,8 +235,6 @@ export const DigitalOpsView: React.FC<DigitalOpsViewProps> = ({
           </div>
         )}
       </div>
-    </div>
-
       {isAddOpen && onAddProject && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
           <form onSubmit={(e) => {

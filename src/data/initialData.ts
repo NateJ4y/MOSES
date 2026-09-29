@@ -18,7 +18,6 @@ import {
    =========================================================================
    All CRM, project, inbox, outreach, warning and research records begin empty.
    Permanent knowledge below is system configuration, not client/demo data.
-   ========================================================================= */ (OS in clean default mode)
    ========================================================================= */
 
 // All CRM, lead, project, and inbox records are initialized empty
