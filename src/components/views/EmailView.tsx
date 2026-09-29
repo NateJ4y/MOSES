@@ -39,26 +39,22 @@ export const EmailView: React.FC<EmailViewProps> = ({
 
   const [currentCategory, setCurrentCategory] = useState<EmailMessage['category']>('LEADS');
   const [selectedEmail, setSelectedEmail] = useState<EmailMessage | null>(emails[0] || null);
-  const [replyDraft, setReplyDraft] = useState<string>(
-    `Hi David,\n\nGlad you liked the preview! We can deploy this entire subscription flow and automated checkout on your domain within 4 business days.\n\nI will prepare the deployment checklist and payment link for the setup.\n\nBest,\nNate\nCoalesce Digital`
-  );
+  const [replyDraft, setReplyDraft] = useState<string>('');
   const [approvalStage, setApprovalStage] = useState<'DRAFT_READY' | 'REVIEW' | 'APPROVED' | 'SENT'>('DRAFT_READY');
 
   const filteredEmails = emails.filter(e => currentCategory === 'INBOX' ? true : e.category === currentCategory);
 
   const handleAdvanceApproval = () => {
     playCyberSound('click');
+    if (!selectedEmail) return;
     if (approvalStage === 'DRAFT_READY') {
       setApprovalStage('REVIEW');
     } else if (approvalStage === 'REVIEW') {
       setApprovalStage('APPROVED');
       playCyberSound('response');
     } else if (approvalStage === 'APPROVED') {
-      setApprovalStage('SENT');
-      playCyberSound('send');
-      if (selectedEmail) {
-        setEmails(prev => prev.map(e => e.id === selectedEmail.id ? { ...e, status: 'SENT' } : e));
-      }
+      // V1 has no live mail provider. Approval is terminal until one is connected.
+      playCyberSound('click');
     }
   };
 
@@ -227,7 +223,7 @@ export const EmailView: React.FC<EmailViewProps> = ({
                     <span className="text-zinc-300">&rsaquo;</span>
                     <span className={`px-2 py-0.5 rounded-full ${approvalStage === 'APPROVED' ? 'bg-blue-600 text-white' : 'bg-zinc-100 text-zinc-500'}`}>3. Approve</span>
                     <span className="text-zinc-300">&rsaquo;</span>
-                    <span className={`px-2 py-0.5 rounded-full ${approvalStage === 'SENT' ? 'bg-emerald-600 text-white' : 'bg-zinc-100 text-zinc-500'}`}>4. Sent</span>
+                    <span className={`px-2 py-0.5 rounded-full ${approvalStage === 'APPROVED' ? 'bg-emerald-600 text-white' : 'bg-zinc-100 text-zinc-500'}`}>4. Sent</span>
                   </div>
                 </div>
 
@@ -275,7 +271,7 @@ export const EmailView: React.FC<EmailViewProps> = ({
                         className="px-4 py-2 rounded-full bg-black hover:bg-zinc-800 text-white text-xs font-semibold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                       >
                         <Send size={13} />
-                        <span>Authorized: Send Email Now</span>
+                        <span>Authorized: Approve Draft Now</span>
                       </button>
                     )}
 
