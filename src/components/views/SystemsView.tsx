@@ -96,7 +96,7 @@ export const SystemsView: React.FC = () => {
             }`}
           >
             <Play size={13} className={isRunning ? 'animate-spin' : ''} />
-            <span>{isRunningSim ? 'Simulating Workflow...' : 'Simulate Workflow Run'}</span>
+            <span>{isRunning ? 'Executing Workflow...' : 'Run Connected Workflow'}</span>
           </button>
         </div>
       </div>
@@ -128,7 +128,7 @@ export const SystemsView: React.FC = () => {
             Blueprint: Instant Lead Qualification &amp; WhatsApp Dispatch
           </span>
           <span className="text-[10px] text-emerald-700 font-medium">
-            {isRunningSim ? '● Simulating live payload' : '○ Engine ready'}
+            {runStatus === 'RUNNING' ? '● Executing connected workflow' : `○ ${runStatus}`}
           </span>
         </div>
 
