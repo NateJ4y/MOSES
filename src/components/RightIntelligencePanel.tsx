@@ -81,7 +81,7 @@ export const RightIntelligencePanel: React.FC<RightIntelligencePanelProps> = ({
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[9px] px-2 py-0.5 rounded-full bg-zinc-200 text-zinc-800 font-semibold">
-              AUTO-SYNC
+              LIVE STATE
             </span>
             {onClose && (
               <button
@@ -330,30 +330,30 @@ export const RightIntelligencePanel: React.FC<RightIntelligencePanelProps> = ({
             <div className="flex items-center justify-between text-zinc-600">
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                MEMORY REPOSITORY
+                LOCAL DATA STORE
               </span>
-              <span className="text-emerald-600 font-bold">READY</span>
+              <span className="text-emerald-600 font-bold">PERSISTENT</span>
             </div>
             <div className="flex items-center justify-between text-zinc-600">
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                 AUTOMATION PIPELINE
               </span>
-              <span className="text-amber-700 font-medium">STANDBY (n8n READY)</span>
+              <span className="text-amber-700 font-medium">NOT CONNECTED</span>
             </div>
             <div className="flex items-center justify-between text-zinc-600">
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
                 EMAIL ENGINE
               </span>
-              <span className="text-zinc-500">LOCAL REVIEW GATED</span>
+              <span className="text-zinc-500">LOCAL REVIEW / APPROVAL</span>
             </div>
             <div className="flex items-center justify-between text-zinc-600">
               <span className="flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
                 WHATSAPP BOT
               </span>
-              <span className="text-zinc-500">SIMULATION MODE</span>
+              <span className="text-zinc-500">NOT CONNECTED</span>
             </div>
           </div>
         </div>
