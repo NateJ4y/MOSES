@@ -21,41 +21,19 @@ interface MemoryRule {
   dateAdded: string;
 }
 
-const INITIAL_RULES: MemoryRule[] = [
-  {
-    id: 'mem-1',
-    category: 'BUSINESS_CONSTRAINT',
-    rule: 'Solo operator model: Never accept more than 4 simultaneous high-touch builds without raising retainer rates.',
-    confidence: 100,
-    dateAdded: '2026-08-20'
-  },
-  {
-    id: 'mem-2',
-    category: 'TACTICAL_HEURISTIC',
-    rule: 'The Skeem Hook: Always lead cold outreach with a tangible 45-60s live interactive preview link to eliminate pitch resistance.',
-    confidence: 98,
-    dateAdded: '2026-08-22'
-  },
-  {
-    id: 'mem-3',
-    category: 'PREFERENCE',
-    rule: 'Tone protocol: Direct, action-oriented, slightly sarcastic, highly strategic. Use "skeem" naturally but sparingly.',
-    confidence: 99,
-    dateAdded: '2026-08-25'
-  },
-  {
-    id: 'mem-4',
-    category: 'TACTICAL_HEURISTIC',
-    rule: 'South African market optimization: Frame retainers in Rands (ZAR), benchmark starter setups at R1,500 - R5,000/mo.',
-    confidence: 95,
-    dateAdded: '2026-08-27'
-  }
-];
+const INITIAL_RULES: MemoryRule[] = [];
 
 export const MemoryView: React.FC = () => {
   const [rules, setRules] = useState<MemoryRule[]>(INITIAL_RULES);
+  const [hydrated, setHydrated] = useState(false);
   const [newRule, setNewRule] = useState('');
   const [newCategory, setNewCategory] = useState<MemoryRule['category']>('TACTICAL_HEURISTIC');
+
+  React.useEffect(() => {
+    try { const raw = localStorage.getItem('moses.memory.v1'); if (raw) setRules(JSON.parse(raw)); } catch {}
+    setHydrated(true);
+  }, []);
+  React.useEffect(() => { if (hydrated) { try { localStorage.setItem('moses.memory.v1', JSON.stringify(rules)); } catch {} } }, [rules, hydrated]);
 
   const handleAddRule = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +77,7 @@ export const MemoryView: React.FC = () => {
 
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 border border-zinc-200 text-xs text-zinc-800 font-semibold">
           <Database size={13} className="text-zinc-900" />
-          <span>Autonomous Memory Index Active</span>
+          <span>Persistent Local Memory</span>
         </div>
       </div>
 
