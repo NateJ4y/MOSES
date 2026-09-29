@@ -114,7 +114,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
       problem: newLead.problem || 'UNKNOWN',
       potentialService: newLead.potentialService || 'Websites + AI Automation',
       leadScore: 0,
-      scoreTier: 'COLD',
+      scoreTier: 'UNSCORED',
       status: (newLead.status as LeadStatus) || 'NEW',
       estimatedValue: Number(newLead.estimatedValue) || 0,
       nextAction: 'RESEARCH REQUIRED',
@@ -189,7 +189,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
 
         <div className="flex items-center gap-1.5 overflow-x-auto text-xs pb-1 md:pb-0">
           <span className="text-[10px] text-zinc-400 uppercase shrink-0 font-bold tracking-wider">FILTER:</span>
-          {['ALL', 'HOT', 'WARM', 'COLD', 'POOR_FIT', 'CAPACITY_RISK'].map((t) => (
+          {['ALL', 'HOT', 'WARM', 'COLD', 'POOR_FIT', 'UNSCORED', 'CAPACITY_RISK'].map((t) => (
             <button
               key={t}
               onClick={() => {
