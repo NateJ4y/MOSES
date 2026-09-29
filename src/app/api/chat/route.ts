@@ -82,24 +82,7 @@ export async function POST(req: Request) {
 
     if (lower.includes("prospect") || lower.includes("find lead") || lower.includes("lead")) {
       intent = "LEAD_GENERATION";
-      reply = `Alright skeem, scanning the radar. Here are 3 high-probability targets based on our sweet spot:
-
-1. **Vanguard Logistics (Durban)**
-   - *Signal*: Website not responsive, no SSL, running manual WhatsApp quote requests.
-   - *Angle*: Automated instant quote calculator + modern web revamp.
-   - *Lead Score*: 88/100 (High budget, clear pain point).
-
-2. **Kloof Artisanal Roasters (Cape Town / JHB)**
-   - *Signal*: Good social following (8.4k), but bio link is a dead tree, zero e-commerce conversion flow.
-   - *Angle*: High-converting Shopify setup + automated weekly coffee subscription flow.
-   - *Lead Score*: 92/100 (Immediate revenue boost).
-
-3. **Apex Dental Care (Sandton)**
-   - *Signal*: Spending on Google Ads with traffic dumped onto a 2017 homepage.
-   - *Angle*: High-converting booking landing page + automated WhatsApp appointment reminders.
-   - *Lead Score*: 85/100.
-
-Let's prepare a 60-second concept preview for Kloof first. What do you think, skeem?`;
+      reply = `I don't have a connected lead source or verified prospect dataset, skeem.\n\nNO DATA — I won't invent businesses, contacts, scores, or problems.\n\nIf you give me a real business URL/contact or connect a research/CRM source, I can analyze it and create a lead record from the evidence.`;
     } else if (lower.includes("outreach") || lower.includes("campaign") || lower.includes("pitch")) {
       intent = "OUTREACH_STRATEGY";
       reply = `Here is the play, skeem. Remember: don't blast them with a 5-paragraph corporate brochure. We use the Coalesce Skeem play:
@@ -154,14 +137,7 @@ Paste the link and let's run the diagnostics.`;
 You can inspect and simulate this live in the **SYSTEMS** tab right now. Want me to spin up a custom node layout?`;
     } else if (lower.includes("trend") || lower.includes("research")) {
       intent = "MARKET_RESEARCH";
-      reply = `Here is today's top actionable digital trend, skeem:
-
-**Trend**: AI-assisted WhatsApp CRM & Conversational Commerce in South Africa & Africa.
-**Why It Matters**: WhatsApp has a 96% open rate in our region. Small businesses are losing leads because their receptionists take 4 hours to reply.
-**Coalesce Opportunity**: Package a "24/7 AI Receptionist & Booking Bot" for service businesses (clinics, salons, auto mechanics, lawyers).
-**Execution**: Build a 1-page demo site with an embedded interactive WhatsApp flow. Use it as our outreach hook.
-
-This is an easy recurring retainer package (R2,500 - R4,500/mo). Check the **RESEARCH** tab for the full breakdown.`;
+      reply = `RESEARCH REQUIRED, skeem. Live research is not connected to MOSES yet, so I won't present a trend, statistic, or market claim as current fact. Connect a research source or provide the target/topic and I can work from verified evidence.`;
     } else {
       const count = context?.leadCount ?? 0;
       const followUps = context?.hotLeads ?? 0;
