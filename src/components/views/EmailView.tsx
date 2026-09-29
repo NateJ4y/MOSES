@@ -275,7 +275,7 @@ export const EmailView: React.FC<EmailViewProps> = ({
                       </button>
                     )}
 
-                    {approvalStage === 'SENT' && (
+                    {approvalStage === 'APPROVED' && (
                       <div className="px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 font-bold flex items-center gap-1.5">
                         <Check size={14} />
                         <span>Dispatched to Recipient</span>
