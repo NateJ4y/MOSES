@@ -55,6 +55,7 @@ export function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   // Play startup sound on initial interaction
   useEffect(() => {
@@ -118,12 +119,13 @@ export function App() {
     setProjects(restore('moses.projects.v1', []));
     setEmails(restore('moses.emails.v1', []));
     setMessages(restore('moses.messages.v1', INITIAL_MESSAGES));
+    setIsHydrated(true);
   }, [restore]);
 
-  useEffect(() => persist('moses.leads.v1', leads), [leads, persist]);
-  useEffect(() => persist('moses.projects.v1', projects), [projects, persist]);
-  useEffect(() => persist('moses.emails.v1', emails), [emails, persist]);
-  useEffect(() => persist('moses.messages.v1', messages), [messages, persist]);
+  useEffect(() => { if (isHydrated) persist('moses.leads.v1', leads); }, [leads, persist, isHydrated]);
+  useEffect(() => { if (isHydrated) persist('moses.projects.v1', projects); }, [projects, persist, isHydrated]);
+  useEffect(() => { if (isHydrated) persist('moses.emails.v1', emails); }, [emails, persist, isHydrated]);
+  useEffect(() => { if (isHydrated) persist('moses.messages.v1', messages); }, [messages, persist, isHydrated]);
 
   // Strategic warnings are derived only from real records.
   useEffect(() => {
