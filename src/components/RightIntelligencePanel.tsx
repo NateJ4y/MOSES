@@ -115,7 +115,7 @@ export const RightIntelligencePanel: React.FC<RightIntelligencePanelProps> = ({
           ) : (
             <>
               <p className="text-xs text-zinc-600 font-medium leading-relaxed">
-                OS is in default standby mode. Zero pending follow-ups or bottlenecks.
+                No verified priority is currently derived from the connected records.
               </p>
               <div className="mt-2.5 pt-2 border-t border-zinc-200 flex items-center justify-between">
                 <span className="text-[10px] text-zinc-500">System State:</span>
@@ -153,7 +153,7 @@ export const RightIntelligencePanel: React.FC<RightIntelligencePanelProps> = ({
           ) : (
             <>
               <p className="text-xs text-zinc-600 leading-relaxed">
-                Ingest high-margin local businesses or prompt Moses: "Find high-probability prospects".
+                Add a real prospect or connect a research source. MOSES will not invent targets.
               </p>
               <button
                 onClick={() => {
