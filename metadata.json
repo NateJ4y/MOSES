@@ -1,0 +1,7 @@
+{
+  "name": "MOSES // COALESCE DIGITAL OS",
+  "description": "Futuristic AI command centre and operating system for Coalesce Digital",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

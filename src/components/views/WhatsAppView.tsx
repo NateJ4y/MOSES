@@ -1,0 +1,272 @@
+import React, { useState } from 'react';
+import { 
+  MessageSquare, 
+  Bot, 
+  Send, 
+  Play, 
+  Pause, 
+  GitBranch, 
+  Users, 
+  ArrowRight, 
+  ShieldCheck, 
+  Sparkles, 
+  Smartphone,
+  PhoneCall,
+  CheckCheck,
+  AlertCircle
+} from 'lucide-react';
+import { WhatsAppFlow } from '../../types';
+import { INITIAL_WHATSAPP_FLOWS } from '../../data/initialData';
+import { playCyberSound } from '../../utils/audio';
+
+export const WhatsAppView: React.FC = () => {
+  const [flows, setFlows] = useState<WhatsAppFlow[]>(INITIAL_WHATSAPP_FLOWS);
+  const [simMessages, setSimMessages] = useState<{ sender: 'BOT' | 'USER'; text: string; time: string }[]>([
+    { sender: 'USER', text: 'Hi, I need help with our clinic booking site.', time: '10:02' },
+    { sender: 'BOT', text: 'Hey there! 👋 Welcome to Coalesce Digital intake. What is the biggest challenge with your current setup?', time: '10:02' },
+    { sender: 'USER', text: 'We lose clients after hours because nobody is answering phone calls.', time: '10:03' },
+    { sender: 'BOT', text: 'Got it. A 24/7 WhatsApp AI receptionist handles booking and deposits automatically. Would you like a 30-sec live demo for your clinic?', time: '10:03' }
+  ]);
+  const [testInput, setTestInput] = useState('');
+  const [activeTab, setActiveTab] = useState<'FLOWS' | 'SIMULATOR' | 'HANDOFFS' | 'WEBHOOK_CONFIG'>('SIMULATOR');
+
+  const handleSendSim = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testInput.trim()) return;
+
+    const userMsg = testInput;
+    setSimMessages(prev => [...prev, { sender: 'USER', text: userMsg, time: 'Now' }]);
+    setTestInput('');
+    playCyberSound('click');
+
+    // Bot automatic response simulation
+    setTimeout(() => {
+      let botReply = "Understood. That matches our high-impact AI Automation system. Let's schedule a 10-minute walkthrough with Nate.";
+      if (userMsg.toLowerCase().includes('price') || userMsg.toLowerCase().includes('cost')) {
+        botReply = "Our systems start with a low-friction setup + monthly optimization retainer. Let me connect you directly with Nate for an exact spec.";
+      }
+      setSimMessages(prev => [...prev, { sender: 'BOT', text: botReply, time: 'Now' }]);
+      playCyberSound('response');
+    }, 500);
+  };
+
+  return (
+    <div className="h-full flex flex-col p-4 sm:p-8 max-w-7xl mx-auto font-sans overflow-y-auto scrollbar-thin space-y-6 bg-white text-zinc-900">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200 pb-5">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-zinc-100 text-zinc-900 border border-zinc-200">
+              <MessageSquare size={18} strokeWidth={1.75} />
+            </div>
+            <h2 className="font-display text-xl font-bold tracking-tight text-zinc-900">
+              WhatsApp Automation Hub
+            </h2>
+          </div>
+          <p className="text-xs sm:text-sm text-zinc-500 mt-1 font-normal">
+            Conversational Lead Intake &bull; Automated Qualification &bull; Human Handoff Gateway
+          </p>
+        </div>
+
+        {/* Status Indicator */}
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 border border-zinc-200 text-xs text-zinc-800 font-semibold">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span>Simulation Mode &bull; Cloud API Ready</span>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+        {[
+          { id: 'SIMULATOR', label: 'Conversation Simulator' },
+          { id: 'FLOWS', label: 'Qualification Flow Builder' },
+          { id: 'HANDOFFS', label: 'Human Escalations & Handoffs' },
+          { id: 'WEBHOOK_CONFIG', label: 'Cloud API Webhook Architecture' }
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => {
+              playCyberSound('click');
+              setActiveTab(tab.id as any);
+            }}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+              activeTab === tab.id
+                ? 'bg-black text-white shadow-xs'
+                : 'bg-white border border-zinc-200 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Main Content Area */}
+      {activeTab === 'SIMULATOR' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1">
+          {/* Left: Bot Spec & Flow Overview */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="p-5 rounded-2xl bg-white border border-zinc-200 shadow-xs space-y-3.5">
+              <h3 className="text-xs font-bold text-zinc-900 uppercase tracking-wider flex items-center gap-2">
+                <Bot size={15} />
+                Lead Qualification Protocol
+              </h3>
+
+              <p className="text-xs text-zinc-600 leading-relaxed font-normal">
+                This simulated flow demonstrates how Moses auto-qualifies WhatsApp prospects before alerting Nate.
+              </p>
+
+              {/* 6 Stage Blueprint */}
+              <div className="space-y-2 text-xs pt-1">
+                {[
+                  { step: '1. New Lead', desc: 'Inbound WhatsApp trigger from ad / QR code' },
+                  { step: '2. Initial Greeting', desc: 'Sub-5s friendly intro & company check' },
+                  { step: '3. Pain Point ID', desc: 'Identifies bottleneck (website, booking, admin)' },
+                  { step: '4. Service Interest', desc: 'Presents automated solution preview' },
+                  { step: '5. Scope Capture', desc: 'Estimates timeline & budget scope' },
+                  { step: '6. Human Handoff', desc: 'Pings Nate with warm prospect dossier' }
+                ].map((s, idx) => (
+                  <div key={idx} className="p-2.5 rounded-xl bg-zinc-50 border border-zinc-200 flex items-start gap-2.5">
+                    <span className="text-[11px] font-bold text-zinc-900 shrink-0">{s.step}</span>
+                    <span className="text-[11px] text-zinc-600">{s.desc}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Phone Simulator Container */}
+          <div className="lg:col-span-7 flex justify-center">
+            <div className="w-full max-w-md rounded-3xl bg-zinc-900 border border-zinc-800 shadow-xl flex flex-col h-[520px] overflow-hidden">
+              {/* WhatsApp App Bar */}
+              <div className="p-3.5 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between text-white">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-xs">
+                    CD
+                  </div>
+                  <div>
+                    <div className="text-xs font-bold">Coalesce Digital AI Assistant</div>
+                    <div className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                      <span>Online &bull; 24/7 Automated</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-zinc-400 text-xs">
+                  <Smartphone size={16} />
+                </div>
+              </div>
+
+              {/* Chat Stream */}
+              <div className="flex-1 p-4 overflow-y-auto space-y-3 bg-[#0d1418] scrollbar-thin text-xs">
+                <div className="text-center my-1">
+                  <span className="px-2.5 py-0.5 rounded-full bg-zinc-800/80 text-[10px] text-zinc-400">
+                    🔒 Messages are end-to-end encrypted
+                  </span>
+                </div>
+
+                {simMessages.map((msg, idx) => {
+                  const isBot = msg.sender === 'BOT';
+                  return (
+                    <div key={idx} className={`flex flex-col ${isBot ? 'items-start' : 'items-end'}`}>
+                      <div
+                        className={`max-w-[84%] p-3 rounded-2xl leading-relaxed ${
+                          isBot
+                            ? 'bg-[#1f2c34] text-zinc-100 rounded-tl-none border border-zinc-700/50'
+                            : 'bg-[#005c4b] text-white rounded-tr-none'
+                        }`}
+                      >
+                        <p>{msg.text}</p>
+                        <div className="text-[9px] text-zinc-400 text-right mt-1 flex items-center justify-end gap-1 font-medium">
+                          <span>{msg.time}</span>
+                          {!isBot && <CheckCheck size={11} className="text-cyan-400" />}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Chat Input */}
+              <form onSubmit={handleSendSim} className="p-2.5 bg-zinc-950 border-t border-zinc-800 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={testInput}
+                  onChange={(e) => setTestInput(e.target.value)}
+                  placeholder="Type a lead reply..."
+                  className="flex-1 p-2.5 rounded-xl bg-zinc-900 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-zinc-600 font-sans"
+                />
+                <button
+                  type="submit"
+                  className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer transition-colors"
+                >
+                  <Send size={15} />
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Flows Tab */}
+      {activeTab === 'FLOWS' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {flows.map((f) => (
+            <div key={f.id} className="p-5 rounded-2xl bg-white border border-zinc-200 shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-zinc-900">{f.name}</h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] text-emerald-700 font-bold">
+                  {f.status}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-600">{f.description}</p>
+              <div className="flex items-center justify-between text-xs text-zinc-500 pt-3 border-t border-zinc-100">
+                <span>Trigger: <strong className="text-zinc-800">{f.trigger}</strong></span>
+                <span className="text-zinc-900 font-semibold">{f.totalLeadsQualified} Leads Qualified</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Handoffs Tab */}
+      {activeTab === 'HANDOFFS' && (
+        <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-xs space-y-4">
+          <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">
+            Human Specialist Escalation Queue
+          </h3>
+          <p className="text-xs text-zinc-600">
+            When a prospect finishes the automated qualifying questions, Moses triggers a webhook to ping Nate's phone.
+          </p>
+          <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="font-bold text-zinc-900">Aura Clinic (Dr. Sarah Ndlovu) - R4,500 Retainer</div>
+              <div className="text-[11px] text-zinc-600 mt-0.5">Qualification complete: 4/4 questions answered. Ready for Nate phone consult.</div>
+            </div>
+            <button className="px-4 py-2 rounded-full bg-black text-white text-xs font-semibold cursor-pointer shrink-0">
+              Claim Handoff
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Webhook Config Tab */}
+      {activeTab === 'WEBHOOK_CONFIG' && (
+        <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-xs space-y-4 text-xs">
+          <h3 className="text-sm font-bold text-zinc-900 uppercase tracking-wider">
+            WhatsApp Cloud API / n8n Webhook Endpoint
+          </h3>
+          <p className="text-zinc-600">
+            Copy this endpoint into your Meta Developer Dashboard or n8n workflow once live webhook credentials are provisioned.
+          </p>
+          <div className="p-3.5 rounded-xl bg-zinc-100 border border-zinc-200 text-zinc-900 font-mono text-xs">
+            POST https://api.coalescedigital.co.za/v1/webhooks/whatsapp/inbound
+          </div>
+          <p className="text-[11px] text-zinc-500">
+            Verification token: <code className="text-zinc-800 font-mono">coalesce_os_meta_verify_token_v2</code>
+          </p>
+        </div>
+      )}
+    </div>
+  );
+};
