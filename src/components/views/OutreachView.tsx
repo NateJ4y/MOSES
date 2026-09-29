@@ -48,20 +48,21 @@ export const OutreachView: React.FC<OutreachViewProps> = ({ leads, initialLead }
   const currentLead = leads.find(l => l.id === selectedLeadId) || leads[0];
 
   const handleGenerateCopy = () => {
+    if (!currentLead) { setCustomDraft('NO DATA — select a real lead before generating outreach.'); return; }
     setIsGenerating(true);
     playCyberSound('blip');
 
     setTimeout(() => {
       let copy = '';
-      const bizName = currentLead ? currentLead.business : '[Business Name]';
+      const bizName = currentLead.business;
       const contact = currentLead?.contactPerson || 'there';
-      const problem = currentLead?.problem || 'manual admin and website friction';
+      const problem = currentLead?.problem && currentLead.problem !== 'UNKNOWN' ? currentLead.problem : 'the verified issue in your lead record';
 
       if (activeChannel === 'INSTAGRAM') {
         if (selectedStage === 'SOFT_PITCH' || selectedStage === 'RISK_REMOVAL') {
           copy = `Hey ${contact}! Love the consistency on your latest posts.
 
-Noticed one quick bottleneck on your profile link—mobile visitors have to manually email to get quotes, which is probably leaking 30-40% of warm traffic.
+Noticed one quick bottleneck on your profile link—mobile visitors have to manually email to get quotes, based on the verified issue in the lead record.
 
 I actually threw together a quick 45-second live concept preview showing how an automated WhatsApp booking flow + instant quote calculator would look for ${bizName}.
 
@@ -81,7 +82,7 @@ Hope you're having a productive week.
 While reviewing local businesses in ${currentLead?.location || 'the area'}, I noticed ${bizName}'s current digital setup has a slight bottleneck: ${problem}.
 
 Rather than sending a generic sales deck, I built a lightweight, interactive live preview showing how ${bizName} can capture and qualify inbound leads automatically:
-👉 [Preview URL: coalesce-preview.io/${bizName.toLowerCase().replace(/\s+/g, '-')}]
+[VERIFIED PREVIEW URL — add only if one exists]
 
 Zero sales pitch or obligation—just wanted to put something tangible in front of you.
 
