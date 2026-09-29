@@ -230,7 +230,7 @@ export const DigitalOpsView: React.FC<DigitalOpsViewProps> = ({
               Delivery Pipeline Standby
             </h3>
             <p className="text-xs text-zinc-500 max-w-md mt-1 leading-relaxed">
-              All project records have been cleared. Operating system is in default clean mode with 4 free client development slots available.
+              All project records have been cleared. Operating system is in default clean mode. No project capacity is being consumed.
             </p>
           </div>
         )}
