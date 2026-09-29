@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { NavSection, Lead, StrategicWarning, ChatMessage, LeadStatus, DigitalOpsProject, EmailMessage } from './types';
+import { NavSection, Lead, StrategicWarning, ChatMessage, LeadStatus, DigitalOpsProject, EmailMessage, ClientDNA } from './types';
 import { 
   INITIAL_LEADS, 
   INITIAL_WARNINGS, 
@@ -29,7 +29,6 @@ import { KnowledgeView } from './components/views/KnowledgeView';
 import { MemoryView } from './components/views/MemoryView';
 import { SettingsView } from './components/views/SettingsView';
 import { ClientDNAView } from './components/views/ClientDNAView';
-import { ClientDNA } from './types';
 
 // Audio & Speech
 import { playCyberSound } from './utils/audio';
