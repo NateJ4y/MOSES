@@ -20,7 +20,6 @@ import { playCyberSound } from '../../utils/audio';
 
 interface SettingsViewProps {
   onWipeAllRecords?: () => void;
-  onLoadSampleRecords?: () => void;
   leadsCount?: number;
   projectsCount?: number;
   emailsCount?: number;
@@ -28,7 +27,6 @@ interface SettingsViewProps {
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   onWipeAllRecords,
-  onLoadSampleRecords,
   leadsCount = 0,
   projectsCount = 0,
   emailsCount = 0
@@ -214,7 +212,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </div>
 
           <p className="text-xs text-zinc-600">
-            Control persistent OS records. Wipe all active pipelines, outreach drafts, client builds, and inbox items to return to a clean default state, or reload demo datasets.
+            Control persistent OS records. Wipe all active pipelines, outreach drafts, client builds, and inbox items to return to a clean default state,
           </p>
 
           <div className="p-4 rounded-xl bg-zinc-50 border border-zinc-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -233,20 +231,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {onLoadSampleRecords && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    playCyberSound('click');
-                    onLoadSampleRecords();
-                  }}
-                  className="px-3.5 py-1.5 rounded-full bg-white hover:bg-zinc-100 border border-zinc-200 text-xs font-semibold text-zinc-800 transition-colors cursor-pointer shadow-2xs inline-flex items-center gap-1.5"
-                >
-                  <RotateCcw size={13} />
-                  <span>Load Demo Records</span>
-                </button>
-              )}
-
               {onWipeAllRecords && (
                 <button
                   type="button"
