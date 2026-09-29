@@ -53,7 +53,7 @@ export async function POST(req: Request) {
       try {
         const fullPrompt = `${context ? `[CURRENT SYSTEM CONTEXT]: ${JSON.stringify(context)}\n\n` : ""}${message}`;
         const response = await ai.models.generateContent({
-          model: "gemini-3.7-flash",
+          model: "gemini-3.8-flash",
           contents: [
             { role: "user", parts: [{ text: fullPrompt }] }
           ],
