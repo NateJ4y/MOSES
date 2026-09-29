@@ -314,6 +314,10 @@ export function App() {
     setLeads(prev => [newLead, ...prev]);
   };
 
+  const handleAddProject = (project: DigitalOpsProject) => {
+    setProjects(prev => [project, ...prev]);
+  };
+
   const handleNavigateToOutreachWithLead = (lead: Lead) => {
     setOutreachTargetLead(lead);
     setActiveSection('OUTREACH');
@@ -461,6 +465,7 @@ export function App() {
           {activeSection === 'DIGITAL_OPERATIONS' && (
             <DigitalOpsView 
               projects={projects}
+              onAddProject={handleAddProject}
             />
           )}
 
