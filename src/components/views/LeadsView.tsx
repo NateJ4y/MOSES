@@ -58,15 +58,11 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
     website: '',
     social: '',
     industry: '',
-    location: 'Cape Town, South Africa',
+    location: '',
     problem: '',
-    potentialService: 'Websites + AI Automation',
-    estimatedValue: 5000,
-    status: 'NEW',
-    scoreTier: 'HOT',
-    leadScore: 85,
-    signals: ['Fast growing', 'Digital bottlenecks'],
-    scoreExplanation: 'Evaluated prospect with clear automation and web optimization potential.'
+    potentialService: 'Websites / Web Development',
+    estimatedValue: 0,
+    status: 'NEW'
   });
 
   const safeLeads = leads || [];
@@ -103,8 +99,8 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
     const created: Lead = {
       id: `lead-${Date.now()}`,
       business: newLead.business || 'Untitled Lead',
-      contactPerson: newLead.contactPerson || 'Decision Maker',
-      contactRole: newLead.contactRole || 'Owner / Director',
+      contactPerson: newLead.contactPerson || undefined,
+      contactRole: newLead.contactRole || undefined,
       email: newLead.email || '',
       phone: newLead.phone || '',
       website: newLead.website?.startsWith('http') ? newLead.website : newLead.website ? `https://${newLead.website}` : '',
@@ -113,19 +109,19 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
         instagram: newLead.social?.includes('instagram') || newLead.social?.includes('@') ? newLead.social : undefined,
         whatsapp: newLead.phone || undefined
       },
-      industry: newLead.industry || 'General Business',
-      location: newLead.location || 'Cape Town, South Africa',
-      problem: newLead.problem || 'Needs web development and process automation.',
+      industry: newLead.industry || 'UNKNOWN',
+      location: newLead.location || 'UNKNOWN',
+      problem: newLead.problem || 'UNKNOWN',
       potentialService: newLead.potentialService || 'Websites + AI Automation',
-      leadScore: newLead.leadScore || 85,
-      scoreTier: newLead.scoreTier || 'HOT',
+      leadScore: 0,
+      scoreTier: 'COLD',
       status: (newLead.status as LeadStatus) || 'NEW',
-      estimatedValue: Number(newLead.estimatedValue) || 5000,
-      nextAction: 'Qualify and draft personalized outreach.',
-      lastContact: 'Just added',
-      followUpDate: 'Today',
-      scoreExplanation: newLead.scoreExplanation || 'Direct alignment with Coalesce digital services.',
-      signals: newLead.signals || ['High intent', 'Automation fit']
+      estimatedValue: Number(newLead.estimatedValue) || 0,
+      nextAction: 'RESEARCH REQUIRED',
+      lastContact: 'NEVER',
+      followUpDate: 'NOT SET',
+      scoreExplanation: 'UNSCORED — insufficient evidence. Research required before qualification.',
+      signals: []
     };
 
     if (onAddLead) {
