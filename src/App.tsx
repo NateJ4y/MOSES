@@ -7,7 +7,9 @@ import {
   INITIAL_WARNINGS, 
   INITIAL_MESSAGES,
   INITIAL_PROJECTS,
-  INITIAL_EMAILS
+  INITIAL_EMAILS,
+  INITIAL_KNOWLEDGE_DOCS,
+  MEMORY_ITEMS
 } from './data/initialData';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -237,10 +239,24 @@ export function App() {
           message: promptText,
           context: {
             activeSection,
-            leadCount: leads.length,
-            hotLeads: leads.filter(l => l.scoreTier === 'HOT').length,
-            pipelineValue: leads.reduce((a, c) => a + c.estimatedValue, 0),
-            projectsCount: projects.length
+            leads,
+            projects,
+            emails,
+            clientDNA,
+            messages: [...messages, newUserMsg],
+            memory: [
+              ...MEMORY_ITEMS,
+              ...restore('moses.memory.v1', [])
+            ],
+            knowledge: INITIAL_KNOWLEDGE_DOCS,
+            system: {
+              leadCount: leads.length,
+              projectCount: projects.length,
+              emailCount: emails.length,
+              clientDNACount: clientDNA.length,
+              memoryCount: MEMORY_ITEMS.length,
+              knowledgeCount: INITIAL_KNOWLEDGE_DOCS.length
+            }
           }
         })
       });
