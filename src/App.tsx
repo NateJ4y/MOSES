@@ -74,22 +74,33 @@ export function App() {
     return () => window.removeEventListener('click', handleFirstClick);
   }, []);
 
-  const persist = useCallback((key: string, value: unknown) => {
-    try { window.localStorage.setItem(key, JSON.stringify(value)); }
-    catch (error) { console.warn(`MOSES could not persist ${key}:`, error); }
-  }, []);
+  const collectionForKey = (key: string) => ({
+    'moses.leads.v1': 'leads',
+    'moses.projects.v1': 'projects',
+    'moses.emails.v1': 'emails',
+    'moses.messages.v1': 'messages',
+    'moses.clientDNA.v1': 'client_dna'
+  } as const)[key];
 
-  const restore = useCallback(<T,>(key: string, fallback: T): T => {
+  const persist = useCallback(async (key: string, value: unknown) => {
+    const collection = collectionForKey(key);
+    if (!collection) return;
     try {
-      const raw = window.localStorage.getItem(key);
-      if (!raw) return fallback;
-      const parsed = JSON.parse(raw);
-      return parsed as T;
+      const response = await fetch('/api/data?collection=' + collection, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(value)
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.error || 'Database write failed.');
+      }
     } catch (error) {
-      console.warn(`MOSES could not restore ${key}:`, error);
-      return fallback;
+      console.warn('MOSES database write failed:', error);
     }
   }, []);
+
+  const restore = useCallback(<T,>(_key: string, fallback: T): T => fallback, []);
 
   // Wipe all records handler (Default OS Mode)
   const handleWipeAllRecords = useCallback(() => {
@@ -98,7 +109,7 @@ export function App() {
     setProjects([]);
     setEmails([]);
     setClientDNA([]);
-    try { window.localStorage.removeItem('moses.leads.v1'); window.localStorage.removeItem('moses.projects.v1'); window.localStorage.removeItem('moses.emails.v1'); window.localStorage.removeItem('moses.messages.v1'); window.localStorage.removeItem('moses.clientDNA.v1'); } catch {}
+    void Promise.all([persist('moses.leads.v1', []), persist('moses.projects.v1', []), persist('moses.emails.v1', []), persist('moses.messages.v1', []), persist('moses.clientDNA.v1', [])]);
     setOutreachTargetLead(null);
     setMessages([
       {
@@ -121,15 +132,43 @@ export function App() {
     playCyberSound('boot');
   }, []);
 
-  // Restore all user-owned records. No demo/sample records are loaded.
+  // Phase 2: hydrate real records from the persistent database. No demo/sample records are loaded.
   useEffect(() => {
-    setLeads(restore('moses.leads.v1', []));
-    setProjects(restore('moses.projects.v1', []));
-    setEmails(restore('moses.emails.v1', []));
-    setMessages(restore('moses.messages.v1', INITIAL_MESSAGES));
-    setClientDNA(restore('moses.clientDNA.v1', []));
-    setIsHydrated(true);
-  }, [restore]);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const read = async (collection: string) => {
+          const response = await fetch('/api/data?collection=' + collection, { cache: 'no-store' });
+          if (response.status === 503) return [];
+          const body = await response.json();
+          if (!response.ok) throw new Error(body?.error || 'Database read failed.');
+          return Array.isArray(body.records) ? body.records : [];
+        };
+        const [dbLeads, dbProjects, dbEmails, dbMessages, dbClientDNA] = await Promise.all([
+          read('leads'), read('projects'), read('emails'), read('messages'), read('client_dna')
+        ]);
+        if (cancelled) return;
+        setLeads(dbLeads as Lead[]);
+        setProjects(dbProjects as DigitalOpsProject[]);
+        setEmails(dbEmails as EmailMessage[]);
+        setMessages(dbMessages as ChatMessage[]);
+        setClientDNA(dbClientDNA as ClientDNA[]);
+      } catch (error) {
+        console.warn('MOSES database hydration failed:', error);
+        if (!cancelled) {
+          setLeads([]);
+          setProjects([]);
+          setEmails([]);
+          setMessages(INITIAL_MESSAGES);
+          setClientDNA([]);
+        }
+      } finally {
+        if (!cancelled) setIsHydrated(true);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => { if (isHydrated) persist('moses.leads.v1', leads); }, [leads, persist, isHydrated]);
   useEffect(() => { if (isHydrated) persist('moses.projects.v1', projects); }, [projects, persist, isHydrated]);
