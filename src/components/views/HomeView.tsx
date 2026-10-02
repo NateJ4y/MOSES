@@ -27,6 +27,7 @@ interface HomeViewProps {
   warnings: StrategicWarning[];
   projects?: DigitalOpsProject[];
   aiState: 'IDLE' | 'LISTENING' | 'THINKING' | 'RESPONDING';
+  isOnline?: boolean;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -38,7 +39,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   leads,
   warnings,
   projects = [],
-  aiState
+  aiState,
+  isOnline = false
 }) => {
   const [inputVal, setInputVal] = useState('');
   const [greeting, setGreeting] = useState('Good afternoon, Nate.');
@@ -96,11 +98,16 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="font-display font-bold text-sm tracking-tight text-zinc-900">
-            MOSES // STUDIO COMMAND
+            MOSES
           </span>
-          <span className="text-[10px] text-zinc-700 font-semibold px-2.5 py-0.5 rounded-full bg-zinc-100 border border-zinc-200 tracking-wide">
+          <button
+            type="button"
+            className={`px-2.5 py-0.5 rounded-full border text-[10px] font-semibold tracking-wide transition-all duration-700 ${
+              isOnline ? 'opacity-100 translate-y-0 bg-zinc-100 border-zinc-200 text-zinc-700' : 'opacity-0 translate-y-1 pointer-events-none border-transparent text-transparent'
+            }`}
+          >
             ONLINE
-          </span>
+          </button>
         </div>
 
         <div className="flex items-center gap-4 text-xs text-zinc-500">
