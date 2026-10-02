@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbConfigured, ensureWorkspaceId, listRecords, replaceRecords, upsertRecords } from '@/lib/db/server';
+import { dbConfigured, ensureWorkspaceForUser, getAuthenticatedUser, listRecords, replaceRecords, upsertRecords } from '@/lib/db/server';
 
 const allowed = new Set(['companies','contacts','leads','clients','client_dna','projects','tasks','services','offers','outreach','messages','emails','research','knowledge','memory','workflows','workflow_runs','activities','goals_kpis','documents','integrations','settings']);
 
@@ -14,7 +14,7 @@ function adaptFromDb(table: string, value: unknown): unknown {
   if (Array.isArray(value)) return value.map(item => adaptFromDb(table, item));
   if (!value || typeof value !== 'object') return value;
   const row = value as Record<string, unknown>;
-  if (table === 'messages' && 'content' in row && !('text' in row)) { row.text = row.content; }
+  if (table === 'messages' && 'content' in row && !('text' in row)) row.text = row.content;
   if (table === 'emails') {
     if ('fromAddress' in row) row.from = row.fromAddress;
     if ('toAddress' in row) row.to = row.toAddress;
@@ -34,7 +34,6 @@ function adaptToDb(table: string, value: unknown): unknown {
   }
   return row;
 }
-
 function sanitizeIds(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sanitizeIds);
   if (value && typeof value === 'object') {
@@ -44,10 +43,15 @@ function sanitizeIds(value: unknown): unknown {
   }
   return value;
 }
-
 function getCollection(request: NextRequest) {
   const value = request.nextUrl.searchParams.get('collection');
   return value && allowed.has(value) ? value : null;
+}
+async function authenticatedWorkspace() {
+  const user = await getAuthenticatedUser();
+  if (!user) return { user: null, workspaceId: null as string | null };
+  const workspaceId = await ensureWorkspaceForUser(user.id);
+  return { user, workspaceId };
 }
 
 export async function GET(request: NextRequest) {
@@ -55,7 +59,8 @@ export async function GET(request: NextRequest) {
   if (!table) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
   if (!dbConfigured) return NextResponse.json({ configured: false, records: [] }, { status: 503 });
   try {
-    const workspaceId = await ensureWorkspaceId();
+    const { user, workspaceId } = await authenticatedWorkspace();
+    if (!user || !workspaceId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
     return NextResponse.json({ configured: true, records: adaptFromDb(table, mapKeys(await listRecords(table, workspaceId), toCamelKey)) });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Database read failed.' }, { status: 500 });
@@ -67,13 +72,16 @@ export async function PUT(request: NextRequest) {
   if (!table) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
   if (!dbConfigured) return NextResponse.json({ configured: false }, { status: 503 });
   try {
-    const workspaceId = await ensureWorkspaceId();
+    const { user, workspaceId } = await authenticatedWorkspace();
+    if (!user || !workspaceId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
     const body = await request.json();
     const records = Array.isArray(body) ? body : [body];
     const normalized = records.map((record) => ({ ...mapKeys(adaptToDb(table, sanitizeIds(record)), toSnakeKey) as Record<string, unknown>, workspace_id: workspaceId }));
     const saved = await replaceRecords(table, workspaceId, normalized);
     return NextResponse.json({ configured: true, records: adaptFromDb(table, mapKeys(saved, toCamelKey)) });
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Database replacement failed.' }, { status: 500 }); }
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Database replacement failed.' }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -81,11 +89,14 @@ export async function POST(request: NextRequest) {
   if (!table) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
   if (!dbConfigured) return NextResponse.json({ configured: false }, { status: 503 });
   try {
+    const { user, workspaceId } = await authenticatedWorkspace();
+    if (!user || !workspaceId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
     const body = await request.json();
     const records = Array.isArray(body) ? body : [body];
-    const workspaceId = await ensureWorkspaceId();
     const normalized = records.map((record) => ({ ...mapKeys(adaptToDb(table, sanitizeIds(record)), toSnakeKey) as Record<string, unknown>, workspace_id: workspaceId }));
     const saved = await upsertRecords(table, normalized);
     return NextResponse.json({ configured: true, records: adaptFromDb(table, mapKeys(saved, toCamelKey)) });
-  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Database write failed.' }, { status: 500 }); }
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Database write failed.' }, { status: 500 });
+  }
 }
