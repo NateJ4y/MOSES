@@ -10,6 +10,31 @@ function mapKeys(value: unknown, mapper: (key: string) => string): unknown {
   if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [mapper(key), mapKeys(item, mapper)]));
   return value;
 }
+function adaptFromDb(table: string, value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(item => adaptFromDb(table, item));
+  if (!value || typeof value !== 'object') return value;
+  const row = value as Record<string, unknown>;
+  if (table === 'messages' && 'content' in row && !('text' in row)) { row.text = row.content; }
+  if (table === 'emails') {
+    if ('fromAddress' in row) row.from = row.fromAddress;
+    if ('toAddress' in row) row.to = row.toAddress;
+    if ('messageDate' in row) row.date = row.messageDate;
+  }
+  return row;
+}
+function adaptToDb(table: string, value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(item => adaptToDb(table, item));
+  if (!value || typeof value !== 'object') return value;
+  const row = value as Record<string, unknown>;
+  if (table === 'messages' && 'text' in row && !('content' in row)) row.content = row.text;
+  if (table === 'emails') {
+    if ('from' in row && !('fromAddress' in row)) row.fromAddress = row.from;
+    if ('to' in row && !('toAddress' in row)) row.toAddress = row.to;
+    if ('date' in row && !('messageDate' in row)) row.messageDate = row.date;
+  }
+  return row;
+}
+
 function sanitizeIds(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(sanitizeIds);
   if (value && typeof value === 'object') {
@@ -44,9 +69,9 @@ export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
     const records = Array.isArray(body) ? body : [body];
-    const normalized = records.map((record) => ({ ...mapKeys(sanitizeIds(record), toSnakeKey) as Record<string, unknown>, workspace_id: workspaceId }));
+    const normalized = records.map((record) => ({ ...mapKeys(adaptToDb(table, sanitizeIds(record)), toSnakeKey) as Record<string, unknown>, workspace_id: workspaceId }));
     const saved = await replaceRecords(table, workspaceId, normalized);
-    return NextResponse.json({ configured: true, records: mapKeys(saved, toCamelKey) });
+    return NextResponse.json({ configured: true, records: adaptFromDb(table, mapKeys(saved, toCamelKey)) });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Database replacement failed.' }, { status: 500 }); }
 }
 
