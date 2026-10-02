@@ -60,7 +60,7 @@ export function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [hydratedCollections, setHydratedCollections] = useState<Set<string>>(new Set());
   const [isBooting, setIsBooting] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
 
@@ -133,49 +133,49 @@ export function App() {
   }, []);
 
   // Phase 2: hydrate real records from the persistent database. No demo/sample records are loaded.
+  // Each collection hydrates independently so one broken table can never wipe another table.
   useEffect(() => {
     let cancelled = false;
+    const collections = ['leads', 'projects', 'emails', 'messages', 'client_dna'] as const;
+
     const load = async () => {
-      try {
-        const read = async (collection: string) => {
-          const response = await fetch('/api/data?collection=' + collection, { cache: 'no-store' });
-          if (response.status === 503) return [];
-          const body = await response.json();
-          if (!response.ok) throw new Error(body?.error || 'Database read failed.');
-          return Array.isArray(body.records) ? body.records : [];
-        };
-        const [dbLeads, dbProjects, dbEmails, dbMessages, dbClientDNA] = await Promise.all([
-          read('leads'), read('projects'), read('emails'), read('messages'), read('client_dna')
-        ]);
-        if (cancelled) return;
-        setLeads(dbLeads as Lead[]);
-        setProjects(dbProjects as DigitalOpsProject[]);
-        setEmails(dbEmails as EmailMessage[]);
-        setMessages(dbMessages as ChatMessage[]);
-        setClientDNA(dbClientDNA as ClientDNA[]);
-      } catch (error) {
-        console.warn('MOSES database hydration failed:', error);
-        if (!cancelled) {
-          setLeads([]);
-          setProjects([]);
-          setEmails([]);
-          setMessages(INITIAL_MESSAGES);
-          setClientDNA([]);
+      const results = await Promise.allSettled(collections.map(async (collection) => {
+        const response = await fetch('/api/data?collection=' + collection, { cache: 'no-store' });
+        if (response.status === 503) return { collection, records: [] };
+        const body = await response.json();
+        if (!response.ok) throw new Error(collection + ': ' + (body?.error || 'Database read failed.'));
+        return { collection, records: Array.isArray(body.records) ? body.records : [] };
+      }));
+
+      if (cancelled) return;
+
+      const ready = new Set<string>();
+      results.forEach((result, index) => {
+        const collection = collections[index];
+        if (result.status === 'fulfilled') {
+          ready.add(collection);
+          const records = result.value.records;
+          if (collection === 'leads') setLeads(records as Lead[]);
+          if (collection === 'projects') setProjects(records as DigitalOpsProject[]);
+          if (collection === 'emails') setEmails(records as EmailMessage[]);
+          if (collection === 'messages') setMessages(records as ChatMessage[]);
+          if (collection === 'client_dna') setClientDNA(records as ClientDNA[]);
+        } else {
+          console.warn('MOSES database hydration failed:', result.reason);
         }
-      } finally {
-        if (!cancelled) setIsHydrated(true);
-      }
+      });
+      setHydratedCollections(ready);
     };
+
     void load();
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => { if (isHydrated) persist('moses.leads.v1', leads); }, [leads, persist, isHydrated]);
-  useEffect(() => { if (isHydrated) persist('moses.projects.v1', projects); }, [projects, persist, isHydrated]);
-  useEffect(() => { if (isHydrated) persist('moses.emails.v1', emails); }, [emails, persist, isHydrated]);
-  useEffect(() => { if (isHydrated) persist('moses.messages.v1', messages); }, [messages, persist, isHydrated]);
-  useEffect(() => { if (isHydrated) persist('moses.clientDNA.v1', clientDNA); }, [clientDNA, persist, isHydrated]);
-
+  useEffect(() => { if (hydratedCollections.has('leads')) persist('moses.leads.v1', leads); }, [leads, persist, hydratedCollections]);
+  useEffect(() => { if (hydratedCollections.has('projects')) persist('moses.projects.v1', projects); }, [projects, persist, hydratedCollections]);
+  useEffect(() => { if (hydratedCollections.has('emails')) persist('moses.emails.v1', emails); }, [emails, persist, hydratedCollections]);
+  useEffect(() => { if (hydratedCollections.has('messages')) persist('moses.messages.v1', messages); }, [messages, persist, hydratedCollections]);
+  useEffect(() => { if (hydratedCollections.has('client_dna')) persist('moses.clientDNA.v1', clientDNA); }, [clientDNA, persist, hydratedCollections]);
   // Strategic warnings are derived only from real records.
   useEffect(() => {
     const next: StrategicWarning[] = [];
