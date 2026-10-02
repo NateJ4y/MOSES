@@ -62,6 +62,7 @@ export function App() {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isBooting, setIsBooting] = useState(true);
+  const [isOnline, setIsOnline] = useState(false);
 
   // Play startup sound on initial interaction
   useEffect(() => {
@@ -362,7 +363,12 @@ export function App() {
 
   const handleBootComplete = useCallback(() => {
     setIsBooting(false);
-    playCyberSound('boot');
+    // Give the dashboard a short settle period before announcing ONLINE.
+    window.setTimeout(() => {
+      setIsOnline(true);
+      playCyberSound('online');
+      speakText('Good morning, Nate.');
+    }, 2000);
   }, []);
 
   if (isBooting) {
@@ -422,6 +428,7 @@ export function App() {
           onToggleMobileMenu={() => setMobileMenuOpen(prev => !prev)}
           isRightPanelOpen={isRightPanelOpen}
           onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
+          isOnline={isOnline}
           onNavigateHome={() => {
             playCyberSound('click');
             setActiveSection('COMMAND');
@@ -443,6 +450,7 @@ export function App() {
                 warnings={warnings}
                 projects={projects}
                 aiState={aiState}
+                isOnline={isOnline}
               />
             ) : (
               <CommandFeedView
