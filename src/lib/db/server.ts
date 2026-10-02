@@ -2,7 +2,7 @@ const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 export const dbConfigured = Boolean(url && key);
 
-const allowed = new Set(['companies','contacts','leads','clients','client_dna','projects','tasks','services','offers','outreach','messages','emails','research','knowledge','memory','workflows','workflow_runs','activities','goals_kpis','documents','integrations','settings']);
+const allowed = new Set(['workspaces','companies','contacts','leads','clients','client_dna','projects','tasks','services','offers','outreach','messages','emails','research','knowledge','memory','workflows','workflow_runs','activities','goals_kpis','documents','integrations','settings']);
 
 function check(table: string) {
   if (!allowed.has(table)) throw new Error('Unsupported database collection.');
@@ -39,4 +39,13 @@ export async function upsertRecords(table: string, records: unknown[]) {
 export async function replaceRecords(table: string, workspaceId: string, records: unknown[]) {
   await dbRequest(table + '?workspace_id=eq.' + encodeURIComponent(workspaceId), { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
   return records.length ? upsertRecords(table, records) : [];
+}
+
+export async function ensureWorkspaceId() {
+  if (process.env.MOSES_WORKSPACE_ID) return process.env.MOSES_WORKSPACE_ID;
+  const rows = await dbRequest('workspaces?select=id&order=created_at.asc&limit=1', { method: 'GET' });
+  if (Array.isArray(rows) && rows[0]?.id) return rows[0].id as string;
+  const created = await dbRequest('workspaces', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ name: 'Coalesce Digital' }) });
+  if (Array.isArray(created) && created[0]?.id) return created[0].id as string;
+  throw new Error('Could not initialize MOSES workspace.');
 }
