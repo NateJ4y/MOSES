@@ -14,7 +14,8 @@ import {
   RefreshCw,
   Sparkles,
   Database,
-  RotateCcw
+  RotateCcw,
+  LogOut
 } from 'lucide-react';
 import { playCyberSound } from '../../utils/audio';
 
@@ -74,6 +75,19 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       <form onSubmit={handleSave} className="space-y-5">
+        <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-xs flex items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={17} className="text-zinc-700" />
+              <h3 className="font-display text-sm font-bold text-zinc-900 uppercase tracking-wider">Authenticated Identity</h3>
+            </div>
+            <p className="text-[11px] text-zinc-500 mt-1">Your MOSES session is protected by Supabase Auth.</p>
+          </div>
+          <button type="button" onClick={() => { playCyberSound('click'); window.location.assign('/logout'); }} className="px-3.5 py-1.5 rounded-full bg-zinc-100 hover:bg-black hover:text-white border border-zinc-200 text-xs font-semibold transition-colors inline-flex items-center gap-1.5">
+            <LogOut size={13} />
+            Sign out
+          </button>
+        </div>
         {/* Theme Engine */}
         <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
