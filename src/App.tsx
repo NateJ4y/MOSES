@@ -15,6 +15,7 @@ import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { RightIntelligencePanel } from './components/RightIntelligencePanel';
 import { CommandPalette } from './components/CommandPalette';
+import { BootSequence } from './components/BootSequence';
 
 // Views
 import { HomeView } from './components/views/HomeView';
@@ -60,6 +61,7 @@ export function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isBooting, setIsBooting] = useState(true);
 
   // Play startup sound on initial interaction
   useEffect(() => {
@@ -357,6 +359,15 @@ export function App() {
       setIsSidebarCollapsed(prev => !prev);
     }
   };
+
+  const handleBootComplete = useCallback(() => {
+    setIsBooting(false);
+    playCyberSound('boot');
+  }, []);
+
+  if (isBooting) {
+    return <BootSequence onComplete={handleBootComplete} />;
+  }
 
   return (
     <div className="flex h-screen w-screen bg-white text-zinc-900 overflow-hidden font-sans select-none">
