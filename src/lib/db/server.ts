@@ -5,7 +5,7 @@ export const dbConfigured = Boolean(url && key);
 const allowed = new Set(['workspaces','companies','contacts','leads','clients','client_dna','projects','tasks','services','offers','outreach','messages','emails','research','knowledge','memory','workflows','workflow_runs','activities','goals_kpis','documents','integrations','settings']);
 
 function check(table: string) {
-  if (!allowed.has(table)) throw new Error('Unsupported database collection.');
+  if (!allowed.has(table.split('?')[0])) throw new Error('Unsupported database collection.');
   if (!dbConfigured) throw new Error('MOSES database is not configured.');
 }
 
@@ -27,8 +27,6 @@ export async function dbRequest(table: string, init: RequestInit = {}) {
 }
 
 export async function listRecords(table: string, workspaceId: string) {
-  const query = new URLSearchParams({ select: '*', workspace_id: 'eq.' + workspaceId });
-  const query = '?select=*&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&order=created_at.desc';
   return dbRequest(table + '?select=*&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&order=created_at.desc', { method: 'GET', headers: { Prefer: 'return=representation' } });
 }
 
