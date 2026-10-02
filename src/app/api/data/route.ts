@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbConfigured, ensureWorkspaceId, listRecords, replaceRecords } from '@/lib/db/server';
+import { dbConfigured, ensureWorkspaceId, listRecords, replaceRecords, upsertRecords } from '@/lib/db/server';
 
 const allowed = new Set(['companies','contacts','leads','clients','client_dna','projects','tasks','services','offers','outreach','messages','emails','research','knowledge','memory','workflows','workflow_runs','activities','goals_kpis','documents','integrations','settings']);
 
@@ -80,10 +80,9 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const records = Array.isArray(body) ? body : [body];
-    const workspaceId = process.env.MOSES_WORKSPACE_ID;
-    if (!workspaceId) return NextResponse.json({ error: 'MOSES_WORKSPACE_ID is not configured.' }, { status: 503 });
-    const normalized = records.map((record) => ({ ...mapKeys(sanitizeIds(record), toSnakeKey) as Record<string, unknown>, workspace_id: workspaceId }));
+    const workspaceId = await ensureWorkspaceId();
+    const normalized = records.map((record) => ({ ...mapKeys(adaptToDb(table, sanitizeIds(record)), toSnakeKey) as Record<string, unknown>, workspace_id: workspaceId }));
     const saved = await upsertRecords(table, normalized);
-    return NextResponse.json({ configured: true, records: mapKeys(saved, toCamelKey) });
+    return NextResponse.json({ configured: true, records: adaptFromDb(table, mapKeys(saved, toCamelKey)) });
   } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Database write failed.' }, { status: 500 }); }
 }
