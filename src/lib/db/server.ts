@@ -2,7 +2,7 @@ const url = process.env.SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 export const dbConfigured = Boolean(url && key);
 
-const allowed = new Set(['workspaces','companies','contacts','leads','clients','client_dna','projects','tasks','services','offers','outreach','messages','emails','research','knowledge','memory','workflows','workflow_runs','activities','goals_kpis','documents','integrations','settings']);
+const allowed = new Set(['workspaces','workspace_members','companies','contacts','leads','clients','client_dna','projects','tasks','services','offers','outreach','messages','emails','research','knowledge','memory','workflows','workflow_runs','activities','goals_kpis','documents','integrations','settings']);
 
 function check(table: string) {
   if (!allowed.has(table.split('?')[0])) throw new Error('Unsupported database collection.');
