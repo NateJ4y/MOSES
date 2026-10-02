@@ -19,7 +19,7 @@ export const BootSequence: React.FC<BootSequenceProps> = ({ onComplete }) => {
 
   useEffect(() => {
     const started = performance.now();
-    const duration = 2600;
+    const duration = 7000;
     let frame = 0;
     const tick = () => {
       const elapsed = performance.now() - started;
@@ -28,7 +28,7 @@ export const BootSequence: React.FC<BootSequenceProps> = ({ onComplete }) => {
       setProgress(nextProgress);
       setStepIndex(Math.min(BOOT_STEPS.length - 1, Math.floor((nextProgress / 100) * BOOT_STEPS.length)));
       if (eased < 1) frame = requestAnimationFrame(tick);
-      else window.setTimeout(onComplete, 220);
+      else window.setTimeout(onComplete, 180);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
@@ -64,7 +64,7 @@ export const BootSequence: React.FC<BootSequenceProps> = ({ onComplete }) => {
           <div className="h-1 w-full overflow-hidden rounded-full bg-zinc-100"><div className="h-full rounded-full bg-zinc-900 transition-[width] duration-100 ease-linear" style={{ width: `${progress}%` }} /></div>
           <div className="mt-3 flex justify-between font-mono-tech text-[8px] uppercase tracking-[0.16em] text-zinc-300"><span>BOOT SEQUENCE</span><span>SECURE SESSION</span></div>
         </div>
-        <div className="mt-8 flex items-center gap-2 font-mono-tech text-[8px] uppercase tracking-[0.2em] text-zinc-400"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />System preparing</div>
+        <div className="mt-8 flex items-center gap-2 font-mono-tech text-[8px] uppercase tracking-[0.2em] text-zinc-400"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />MOSES CORE INITIALIZING</div>
       </div>
     </div>
   );
