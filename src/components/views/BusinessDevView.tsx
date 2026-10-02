@@ -100,7 +100,7 @@ export const BusinessDevView: React.FC<BusinessDevViewProps> = ({
       status: 'NEW',
       estimatedValue: 0,
       nextAction: 'Verify prospect data and identify the primary business friction.',
-      lastContact: ''
+      lastContact: '',
       followUpDate: ''
       scoreExplanation: 'Not scored yet. Moses will only score this lead after verified evidence is available.',
       signals: ['New prospect — verification required']
