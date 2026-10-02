@@ -2,6 +2,33 @@ import { dbConfigured, ensureWorkspaceId, dbRequest } from '@/lib/db/server';
 
 export const dynamic = 'force-dynamic';
 
+const collections = [
+  'workspaces',
+  'workspace_members',
+  'companies',
+  'contacts',
+  'leads',
+  'clients',
+  'client_dna',
+  'projects',
+  'tasks',
+  'services',
+  'offers',
+  'outreach',
+  'messages',
+  'emails',
+  'research',
+  'knowledge',
+  'memory',
+  'workflows',
+  'workflow_runs',
+  'activities',
+  'goals_kpis',
+  'documents',
+  'integrations',
+  'settings',
+] as const;
+
 export default async function HealthPage() {
   const result: Record<string, unknown> = { configured: dbConfigured };
 
@@ -11,14 +38,23 @@ export default async function HealthPage() {
     try {
       const workspaceId = await ensureWorkspaceId();
       result.workspaceId = workspaceId;
-      const collections = ['leads', 'projects', 'emails', 'messages', 'client_dna'];
       result.collections = {};
+
       for (const collection of collections) {
         try {
-          const rows = await dbRequest(collection + '?select=id&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&limit=1');
-          (result.collections as Record<string, unknown>)[collection] = { ok: true, count: Array.isArray(rows) ? rows.length : 0 };
+          const query = collection === 'workspaces'
+            ? 'select=id&limit=1'
+            : 'select=id&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&limit=1';
+          const rows = await dbRequest(collection + '?' + query);
+          (result.collections as Record<string, unknown>)[collection] = {
+            ok: true,
+            count: Array.isArray(rows) ? rows.length : 0,
+          };
         } catch (error) {
-          (result.collections as Record<string, unknown>)[collection] = { ok: false, error: error instanceof Error ? error.message : 'Unknown error' };
+          (result.collections as Record<string, unknown>)[collection] = {
+            ok: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+          };
         }
       }
     } catch (error) {
