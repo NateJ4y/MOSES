@@ -27,6 +27,7 @@ interface HeaderProps {
   isRightPanelOpen?: boolean;
   onToggleRightPanel?: () => void;
   onNavigateHome?: () => void;
+  isOnline?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -40,7 +41,8 @@ export const Header: React.FC<HeaderProps> = ({
   isListening,
   isRightPanelOpen,
   onToggleRightPanel,
-  onNavigateHome
+  onNavigateHome,
+  isOnline = false
 }) => {
   const [time, setTime] = useState<string>('');
   const [dateStr, setDateStr] = useState<string>('');
@@ -120,33 +122,24 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-[10px] text-zinc-400 font-normal">/</span>
               <span className="text-[11px] text-zinc-600 font-medium tracking-wide">COALESCE OS</span>
             </div>
-            <span className="text-[9px] text-zinc-400 font-medium tracking-wider uppercase mt-0.5">STUDIO INTELLIGENCE</span>
           </div>
         </div>
       </div>
 
-      {/* Center Telemetry Readout - Apple Luxury Minimal */}
-      <div className="hidden lg:flex items-center gap-3 text-xs">
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-50 border border-zinc-200/80">
-          <Cpu size={12} strokeWidth={1.5} className="text-zinc-500" />
-          <span className="text-zinc-500 text-[11px] font-medium">CORE</span>
-          <span className="text-emerald-600 font-semibold text-[11px] flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            ONLINE
-          </span>
-        </div>
-
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-50 border border-zinc-200/80">
-          <Radio size={12} strokeWidth={1.5} className="text-zinc-500" />
-          <span className="text-zinc-500 text-[11px] font-medium">STATUS</span>
-          <span className="text-zinc-900 text-[11px] font-semibold tracking-wide">NOMINAL</span>
-        </div>
-
-        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-50 border border-zinc-200/80">
-          <Zap size={12} strokeWidth={1.5} className="text-zinc-500" />
-          <span className="text-zinc-500 text-[11px] font-medium">CAPACITY</span>
-          <span className="text-zinc-900 text-[11px] font-medium">3/4 ACTIVE BUILDS</span>
-        </div>
+      {/* Online state — appears only after the full boot sequence and 2s settle delay */}
+      <div className="hidden lg:flex items-center justify-center min-w-0">
+        <button
+          type="button"
+          className={`relative flex items-center gap-2 px-4 py-1.5 rounded-full border text-[11px] font-semibold tracking-[0.14em] transition-all duration-700 ${
+            isOnline
+              ? 'opacity-100 translate-y-0 bg-zinc-50 border-zinc-200 text-zinc-800 shadow-sm'
+              : 'opacity-0 translate-y-1 pointer-events-none bg-transparent border-transparent text-transparent'
+          }`}
+          aria-label={isOnline ? 'MOSES online' : 'MOSES loading'}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          ONLINE
+        </button>
       </div>
 
       {/* Right Controls & Time */}
