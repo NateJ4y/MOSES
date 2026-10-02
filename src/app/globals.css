@@ -108,3 +108,163 @@ body {
 .animate-pulse-ring {
   animation: pulse-ring 3.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+
+/* --------------------------------------------------------------------------
+   Responsive hardening
+   Preserve the existing desktop composition while preventing mobile overflow.
+   -------------------------------------------------------------------------- */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
+  overflow-x: hidden;
+}
+
+button, input, textarea, select {
+  max-width: 100%;
+}
+
+button {
+  min-width: 0;
+}
+
+img, svg, video, canvas {
+  max-width: 100%;
+}
+
+main,
+main > *,
+main .flex,
+main .grid,
+main .flex > *,
+main .grid > * {
+  min-width: 0;
+}
+
+main p,
+main h1,
+main h2,
+main h3,
+main h4,
+main h5,
+main h6,
+main span,
+main label {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1023px) {
+  /* The intelligence panel becomes an overlay instead of stealing the
+     mobile content width. Its desktop width and composition are untouched. */
+  body > * {
+    max-width: 100vw;
+  }
+
+  .bg-radial-grid {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* RightIntelligencePanel: direct <aside> child of the application shell. */
+  body aside.w-80 {
+    position: fixed;
+    top: 4rem;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    width: min(20rem, calc(100vw - 1rem));
+    max-width: calc(100vw - 1rem);
+    height: auto;
+    box-shadow: -12px 0 32px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Keep the mobile navigation drawer inside the viewport. */
+  .lg\\:hidden + * {
+    min-width: 0;
+  }
+
+  /* Prevent controls and card content from creating horizontal scroll. */
+  main .flex,
+  main .grid {
+    max-width: 100%;
+  }
+
+  main table,
+  main pre,
+  main code {
+    max-width: 100%;
+  }
+
+  main table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  main pre {
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 639px) {
+  /* Give the content a little more usable width on phones without changing
+     the page's visual hierarchy. */
+  header {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    gap: 0.5rem;
+  }
+
+  header > div {
+    min-width: 0;
+  }
+
+  header > div:first-child {
+    gap: 0.5rem;
+    flex: 1 1 auto;
+  }
+
+  header > div:last-child {
+    flex: 0 0 auto;
+    gap: 0.25rem;
+  }
+
+  header > div:last-child > button {
+    flex: 0 0 auto;
+  }
+
+  /* The long brand descriptor is not needed to identify the OS on a phone. */
+  header .tracking-wide {
+    letter-spacing: 0.02em;
+  }
+
+  /* Compact the primary content gutter; card/layout structure remains intact. */
+  main {
+    padding: 0.5rem !important;
+  }
+
+  /* Ensure full-width action buttons never exceed their card. */
+  main button.w-full,
+  main a.w-full {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Flexible button rows can wrap rather than push the viewport sideways. */
+  main .flex-wrap {
+    row-gap: 0.5rem;
+  }
+}
+
+@media (max-width: 380px) {
+  /* Very narrow phones: preserve the same controls, but reclaim horizontal
+     space by removing non-essential clock/date readout. */
+  header > div:last-child > div:last-child {
+    display: none;
+  }
+}
