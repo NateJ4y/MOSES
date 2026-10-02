@@ -30,7 +30,8 @@ export async function dbRequest(table: string, init: RequestInit = {}) {
 
 export async function listRecords(table: string, workspaceId: string) {
   const query = new URLSearchParams({ select: '*', workspace_id: 'eq.' + workspaceId });
-  return dbRequest(table, { method: 'GET', headers: { Prefer: 'return=representation' }, });
+  const query = '?select=*&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&order=created_at.desc';
+  return dbRequest(table, { method: 'GET', headers: { Prefer: 'return=representation' }, next: { revalidate: 0 } });
 }
 
 export async function upsertRecords(table: string, records: unknown[]) {
