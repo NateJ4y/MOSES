@@ -54,17 +54,20 @@ export async function GET(request: NextRequest) {
   const table = getCollection(request);
   if (!table) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
   if (!dbConfigured) return NextResponse.json({ configured: false, records: [] }, { status: 503 });
-  const workspaceId = await ensureWorkspaceId();
-  try { return NextResponse.json({ configured: true, records: adaptFromDb(table, mapKeys(await listRecords(table, workspaceId), toCamelKey)) }); }
-  catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Database read failed.' }, { status: 500 }); }
+  try {
+    const workspaceId = await ensureWorkspaceId();
+    return NextResponse.json({ configured: true, records: adaptFromDb(table, mapKeys(await listRecords(table, workspaceId), toCamelKey)) });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Database read failed.' }, { status: 500 });
+  }
 }
 
 export async function PUT(request: NextRequest) {
   const table = getCollection(request);
   if (!table) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
   if (!dbConfigured) return NextResponse.json({ configured: false }, { status: 503 });
-  const workspaceId = await ensureWorkspaceId();
   try {
+    const workspaceId = await ensureWorkspaceId();
     const body = await request.json();
     const records = Array.isArray(body) ? body : [body];
     const normalized = records.map((record) => ({ ...mapKeys(adaptToDb(table, sanitizeIds(record)), toSnakeKey) as Record<string, unknown>, workspace_id: workspaceId }));
