@@ -25,7 +25,7 @@ export function isAudioEnabled(): boolean {
   return soundEnabled;
 }
 
-export function playCyberSound(type: 'boot' | 'click' | 'blip' | 'send' | 'response' | 'alert' | 'voice_start' | 'voice_stop') {
+export function playCyberSound(type: 'boot' | 'online' | 'click' | 'blip' | 'send' | 'response' | 'alert' | 'voice_start' | 'voice_stop') {
   if (!soundEnabled) return;
   try {
     const ctx = getAudioContext();
@@ -49,6 +49,19 @@ export function playCyberSound(type: 'boot' | 'click' | 'blip' | 'send' | 'respo
         gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
         osc.start(now);
         osc.stop(now + 0.6);
+        break;
+      }
+      case 'online': {
+        // Clean confirmation chime for the final ONLINE state
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.09);
+        osc.frequency.setValueAtTime(783.99, now + 0.18);
+        gain.gain.setValueAtTime(0.001, now);
+        gain.gain.linearRampToValueAtTime(0.08, now + 0.04);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+        osc.start(now);
+        osc.stop(now + 0.55);
         break;
       }
       case 'click': {
