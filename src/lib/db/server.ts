@@ -37,3 +37,8 @@ export async function listRecords(table: string, workspaceId: string) {
 export async function upsertRecords(table: string, records: unknown[]) {
   return dbRequest(table, { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify(records) });
 }
+
+export async function replaceRecords(table: string, workspaceId: string, records: unknown[]) {
+  await dbRequest(table + '?workspace_id=eq.' + encodeURIComponent(workspaceId), { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+  return records.length ? upsertRecords(table, records) : [];
+}
