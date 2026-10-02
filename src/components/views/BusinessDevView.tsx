@@ -78,36 +78,32 @@ export const BusinessDevView: React.FC<BusinessDevViewProps> = ({
     e.preventDefault();
     if (!newBizName.trim()) return;
 
-    // AI evaluate score based on inputs
-    const calculatedScore = Math.floor(Math.random() * 20) + 75; // high quality fit for prototype
-    const tier: LeadScoreTier = calculatedScore >= 80 ? 'HOT' : calculatedScore >= 60 ? 'WARM' : 'COLD';
-
     const newLeadItem: Lead = {
-      id: `lead-${Date.now()}`,
+      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `lead-${Date.now()}`,
       business: newBizName,
-      contactPerson: newContactPerson || 'Managing Partner',
-      contactRole: 'Executive',
-      email: newEmail || `${newBizName.toLowerCase().replace(/[^a-z0-9]/g, '')}@example.co.za`,
-      phone: newPhone || '+27 82 555 0199',
-      industry: newIndustry || 'Digital Services',
+      contactPerson: newContactPerson || undefined,
+      contactRole: undefined,
+      email: newEmail || undefined,
+      phone: newPhone || undefined,
+      industry: newIndustry || 'Unknown',
       location: newLocation,
-      website: newWebsite || 'Pending Audit',
-      social: newSocial || '@' + newBizName.toLowerCase().replace(/\s+/g, ''),
+      website: newWebsite || '',
+      social: newSocial || '',
       socialLinks: {
         instagram: newSocial || undefined,
         whatsapp: newPhone || undefined
       },
-      problem: newProblem || 'Outdated digital funnel with high manual administrative overhead.',
+      problem: newProblem || 'Unknown — requires discovery.',
       potentialService: newPotentialService,
-      leadScore: calculatedScore,
-      scoreTier: tier,
-      status: 'QUALIFIED',
-      estimatedValue: 4500,
-      nextAction: 'Prepare 60-sec live prototype preview using the Skeem method.',
-      lastContact: 'Just added',
-      followUpDate: 'Today',
-      scoreExplanation: 'Evaluated by Moses: Real SMB revenue potential, clear friction point, high-leverage solo delivery fit.',
-      signals: ['New qualified prospect', 'Pain point identified', 'High solo fit']
+      leadScore: 0,
+      scoreTier: 'UNSCORED',
+      status: 'NEW',
+      estimatedValue: 0,
+      nextAction: 'Verify prospect data and identify the primary business friction.',
+      lastContact: ''
+      followUpDate: ''
+      scoreExplanation: 'Not scored yet. Moses will only score this lead after verified evidence is available.',
+      signals: ['New prospect — verification required']
     };
 
     onAddLead(newLeadItem);
