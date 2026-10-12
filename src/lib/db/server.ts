@@ -8,7 +8,7 @@ const allowedTables = new Set(['workspaces', 'workspace_members', 'moses_records
 
 function check(table: string) {
   const base = table.split('?')[0];
-  if (!allowedTables.has(base)) throw new Error('Unsupported database table.');
+  if (!allowedTables.has(base) && base !== 'rpc/replace_moses_collection') throw new Error('Unsupported database table or RPC.');
   if (!dbConfigured) throw new Error('MOSES database is not configured.');
 }
 
