@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+
+const persistenceQueues = new Map<string, Promise<void>>();
 import { NavSection, Lead, StrategicWarning, ChatMessage, LeadStatus, DigitalOpsProject, EmailMessage, ClientDNA } from './types';
 import { 
   INITIAL_LEADS, 
@@ -85,19 +87,25 @@ export function App() {
   const persist = useCallback(async (key: string, value: unknown) => {
     const collection = collectionForKey(key);
     if (!collection) return;
-    try {
-      const response = await fetch('/api/data?collection=' + collection, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(value)
-      });
-      if (!response.ok) {
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body?.error || 'Database write failed.');
+    const previous = persistenceQueues.get(key) ?? Promise.resolve();
+    const next = previous.then(async () => {
+      try {
+        const response = await fetch('/api/data?collection=' + collection, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(value)
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body?.error || 'Database write failed.');
+        }
+      } catch (error) {
+        console.warn('MOSES database write failed:', error);
       }
-    } catch (error) {
-      console.warn('MOSES database write failed:', error);
-    }
+    });
+    persistenceQueues.set(key, next);
+    await next;
+    if (persistenceQueues.get(key) === next) persistenceQueues.delete(key);
   }, []);
 
   const restore = useCallback(<T,>(_key: string, fallback: T): T => fallback, []);
