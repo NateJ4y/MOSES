@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { createClient as createSupabaseServerClient } from '@/lib/supabase/server';
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -46,7 +47,7 @@ function normalizeRecords(records: unknown[], workspaceId: string, collection: s
       throw new Error('Every database record must be a JSON object.');
     }
     const data = { ...(record as Record<string, unknown>) };
-    const id = typeof data.id === 'string' && data.id.trim() ? data.id : crypto.randomUUID();
+    const id = typeof data.id === 'string' && data.id.trim() ? data.id : randomUUID();
     data.id = id;
     return { workspace_id: workspaceId, collection, record_key: id, data };
   });
