@@ -76,8 +76,8 @@ begin
     and existing.collection = p_collection
     and not exists (
       select 1
-      from jsonb_array_elements(p_records) incoming
-      where incoming->>'id' = existing.record_key
+      from jsonb_array_elements(p_records) as incoming(value)
+      where incoming.value->>'id' = existing.record_key
     );
 
   for item in select value from jsonb_array_elements(p_records)
@@ -111,6 +111,7 @@ revoke all on public.moses_records from anon, authenticated;
 grant all on public.workspaces to service_role;
 grant all on public.workspace_members to service_role;
 grant all on public.moses_records to service_role;
+revoke all on function public.replace_moses_collection(uuid, text, jsonb) from public, anon, authenticated;
 grant execute on function public.replace_moses_collection(uuid, text, jsonb) to service_role;
 
 create or replace function public.set_updated_at()
