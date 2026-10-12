@@ -1,52 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { dbConfigured, ensureWorkspaceForUser, getAuthenticatedUser, listRecords, replaceRecords, upsertRecords } from '@/lib/db/server';
 
-const allowed = new Set(['companies','contacts','leads','clients','client_dna','projects','tasks','services','offers','outreach','messages','emails','research','knowledge','memory','workflows','workflow_runs','activities','goals_kpis','documents','integrations','settings']);
+export const dynamic = 'force-dynamic';
 
-function toCamelKey(key: string) { return key.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase()); }
-function toSnakeKey(key: string) { return key.replace(/[A-Z]/g, letter => '_' + letter.toLowerCase()); }
-function mapKeys(value: unknown, mapper: (key: string) => string): unknown {
-  if (Array.isArray(value)) return value.map(item => mapKeys(item, mapper));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([key, item]) => [mapper(key), mapKeys(item, mapper)]));
-  return value;
-}
-function adaptFromDb(table: string, value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(item => adaptFromDb(table, item));
-  if (!value || typeof value !== 'object') return value;
-  const row = value as Record<string, unknown>;
-  if (table === 'messages' && 'content' in row && !('text' in row)) row.text = row.content;
-  if (table === 'emails') {
-    if ('fromAddress' in row) row.from = row.fromAddress;
-    if ('toAddress' in row) row.to = row.toAddress;
-    if ('messageDate' in row) row.date = row.messageDate;
-  }
-  return row;
-}
-function adaptToDb(table: string, value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(item => adaptToDb(table, item));
-  if (!value || typeof value !== 'object') return value;
-  const row = value as Record<string, unknown>;
-  if (table === 'messages' && 'text' in row && !('content' in row)) row.content = row.text;
-  if (table === 'emails') {
-    if ('from' in row && !('fromAddress' in row)) row.fromAddress = row.from;
-    if ('to' in row && !('toAddress' in row)) row.toAddress = row.to;
-    if ('date' in row && !('messageDate' in row)) row.messageDate = row.date;
-  }
-  return row;
-}
-function sanitizeIds(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(sanitizeIds);
-  if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = { ...(value as Record<string, unknown>) };
-    if (typeof out.id === 'string' && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(out.id)) delete out.id;
-    return Object.fromEntries(Object.entries(out).map(([key, item]) => [key, sanitizeIds(item)]));
-  }
-  return value;
-}
+const allowed = new Set([
+  'companies', 'contacts', 'leads', 'clients', 'client_dna', 'projects', 'tasks',
+  'services', 'offers', 'outreach', 'messages', 'emails', 'research', 'knowledge',
+  'memory', 'workflows', 'workflow_runs', 'activities', 'goals_kpis', 'documents',
+  'integrations', 'settings'
+]);
+
 function getCollection(request: NextRequest) {
   const value = request.nextUrl.searchParams.get('collection');
   return value && allowed.has(value) ? value : null;
 }
+
 async function authenticatedWorkspace() {
   const user = await getAuthenticatedUser();
   if (!user) return { user: null, workspaceId: null as string | null };
@@ -54,49 +22,62 @@ async function authenticatedWorkspace() {
   return { user, workspaceId };
 }
 
+function recordsFromBody(body: unknown): unknown[] {
+  if (Array.isArray(body)) return body;
+  if (body && typeof body === 'object') return [body];
+  throw new Error('Request body must be a record or an array of records.');
+}
+
 export async function GET(request: NextRequest) {
-  const table = getCollection(request);
-  if (!table) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
-  if (!dbConfigured) return NextResponse.json({ configured: false, records: [] }, { status: 503 });
+  const collection = getCollection(request);
+  if (!collection) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
+  if (!dbConfigured) {
+    return NextResponse.json({ configured: false, records: [], error: 'Database is not connected.' }, { status: 503 });
+  }
+
   try {
     const { user, workspaceId } = await authenticatedWorkspace();
     if (!user || !workspaceId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
-    return NextResponse.json({ configured: true, records: adaptFromDb(table, mapKeys(await listRecords(table, workspaceId), toCamelKey)) });
+    return NextResponse.json({ configured: true, records: await listRecords(collection, workspaceId) });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Database read failed.' }, { status: 500 });
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Database read failed.'
+    }, { status: 500 });
   }
 }
 
 export async function PUT(request: NextRequest) {
-  const table = getCollection(request);
-  if (!table) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
-  if (!dbConfigured) return NextResponse.json({ configured: false }, { status: 503 });
+  const collection = getCollection(request);
+  if (!collection) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
+  if (!dbConfigured) return NextResponse.json({ configured: false, error: 'Database is not connected.' }, { status: 503 });
+
   try {
     const { user, workspaceId } = await authenticatedWorkspace();
     if (!user || !workspaceId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
-    const body = await request.json();
-    const records = Array.isArray(body) ? body : [body];
-    const normalized = records.map((record) => ({ ...mapKeys(adaptToDb(table, sanitizeIds(record)), toSnakeKey) as Record<string, unknown>, workspace_id: workspaceId }));
-    const saved = await replaceRecords(table, workspaceId, normalized);
-    return NextResponse.json({ configured: true, records: adaptFromDb(table, mapKeys(saved, toCamelKey)) });
+    const records = recordsFromBody(await request.json());
+    const result = await replaceRecords(collection, workspaceId, records);
+    return NextResponse.json({ configured: true, result });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Database replacement failed.' }, { status: 500 });
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Database replacement failed.'
+    }, { status: 500 });
   }
 }
 
 export async function POST(request: NextRequest) {
-  const table = getCollection(request);
-  if (!table) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
-  if (!dbConfigured) return NextResponse.json({ configured: false }, { status: 503 });
+  const collection = getCollection(request);
+  if (!collection) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
+  if (!dbConfigured) return NextResponse.json({ configured: false, error: 'Database is not connected.' }, { status: 503 });
+
   try {
     const { user, workspaceId } = await authenticatedWorkspace();
     if (!user || !workspaceId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
-    const body = await request.json();
-    const records = Array.isArray(body) ? body : [body];
-    const normalized = records.map((record) => ({ ...mapKeys(adaptToDb(table, sanitizeIds(record)), toSnakeKey) as Record<string, unknown>, workspace_id: workspaceId }));
-    const saved = await upsertRecords(table, normalized);
-    return NextResponse.json({ configured: true, records: adaptFromDb(table, mapKeys(saved, toCamelKey)) });
+    const records = recordsFromBody(await request.json());
+    const result = await upsertRecords(collection, workspaceId, records);
+    return NextResponse.json({ configured: true, result });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Database write failed.' }, { status: 500 });
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : 'Database write failed.'
+    }, { status: 500 });
   }
 }
