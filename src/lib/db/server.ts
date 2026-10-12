@@ -1,13 +1,14 @@
 import { createClient as createSupabaseServerClient } from '@/lib/supabase/server';
 
-const url = process.env.SUPABASE_URL;
+const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 export const dbConfigured = Boolean(url && key);
 
-const allowed = new Set(['workspaces','workspace_members','companies','contacts','leads','clients','client_dna','projects','tasks','services','offers','outreach','messages','emails','research','knowledge','memory','workflows','workflow_runs','activities','goals_kpis','documents','integrations','settings']);
+const allowedTables = new Set(['workspaces', 'workspace_members', 'moses_records']);
 
 function check(table: string) {
-  if (!allowed.has(table.split('?')[0])) throw new Error('Unsupported database collection.');
+  const base = table.split('?')[0];
+  if (!allowedTables.has(base)) throw new Error('Unsupported database table.');
   if (!dbConfigured) throw new Error('MOSES database is not configured.');
 }
 
@@ -25,27 +26,66 @@ export async function dbRequest(table: string, init: RequestInit = {}) {
   });
   if (!response.ok) throw new Error('Supabase ' + response.status + ': ' + (await response.text()).slice(0, 500));
   if (response.status === 204) return null;
-  return response.json();
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
 }
 
-export async function listRecords(table: string, workspaceId: string) {
-  return dbRequest(table + '?select=*&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&order=created_at.desc', { method: 'GET', headers: { Prefer: 'return=representation' } });
+export async function listRecords(collection: string, workspaceId: string) {
+  const rows = await dbRequest(
+    'moses_records?select=data&collection=eq.' + encodeURIComponent(collection) +
+    '&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&order=updated_at.desc',
+    { method: 'GET' }
+  );
+  if (!Array.isArray(rows)) throw new Error('Unexpected database response while reading ' + collection + '.');
+  return rows.map((row: { data: unknown }) => row.data);
 }
 
-export async function upsertRecords(table: string, records: unknown[]) {
-  return dbRequest(table, { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify(records) });
+function normalizeRecords(records: unknown[], workspaceId: string, collection: string) {
+  return records.map((record) => {
+    if (!record || typeof record !== 'object' || Array.isArray(record)) {
+      throw new Error('Every database record must be a JSON object.');
+    }
+    const data = { ...(record as Record<string, unknown>) };
+    const id = typeof data.id === 'string' && data.id.trim() ? data.id : crypto.randomUUID();
+    data.id = id;
+    return { workspace_id: workspaceId, collection, record_key: id, data };
+  });
 }
 
-export async function replaceRecords(table: string, workspaceId: string, records: unknown[]) {
-  await dbRequest(table + '?workspace_id=eq.' + encodeURIComponent(workspaceId), { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
-  return records.length ? upsertRecords(table, records) : [];
+export async function upsertRecords(collection: string, workspaceId: string, records: unknown[]) {
+  const normalized = normalizeRecords(records, workspaceId, collection);
+  if (!normalized.length) return [];
+  return dbRequest('moses_records?on_conflict=workspace_id,collection,record_key', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=representation' },
+    body: JSON.stringify(normalized)
+  });
+}
+
+export async function replaceRecords(collection: string, workspaceId: string, records: unknown[]) {
+  const response = await dbRequest('rpc/replace_moses_collection', {
+    method: 'POST',
+    body: JSON.stringify({
+      p_workspace_id: workspaceId,
+      p_collection: collection,
+      p_records: normalizeRecords(records, workspaceId, collection).map((record) => ({
+        id: record.record_key,
+        data: record.data
+      }))
+    })
+  });
+  return response ?? [];
 }
 
 export async function ensureWorkspaceId() {
   if (process.env.MOSES_WORKSPACE_ID) return process.env.MOSES_WORKSPACE_ID;
   const rows = await dbRequest('workspaces?select=id&order=created_at.asc&limit=1', { method: 'GET' });
   if (Array.isArray(rows) && rows[0]?.id) return rows[0].id as string;
-  const created = await dbRequest('workspaces', { method: 'POST', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ name: 'Coalesce Digital' }) });
+  const created = await dbRequest('workspaces', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({ name: 'Coalesce Digital' })
+  });
   if (Array.isArray(created) && created[0]?.id) return created[0].id as string;
   throw new Error('Could not initialize MOSES workspace.');
 }
@@ -63,7 +103,8 @@ export async function ensureWorkspaceForUser(userId: string) {
   if (process.env.MOSES_WORKSPACE_ID) {
     const configuredId = process.env.MOSES_WORKSPACE_ID;
     const members = await dbRequest(
-      'workspace_members?select=workspace_id&user_id=eq.' + encodeURIComponent(userId) + '&workspace_id=eq.' + encodeURIComponent(configuredId) + '&limit=1',
+      'workspace_members?select=workspace_id&user_id=eq.' + encodeURIComponent(userId) +
+      '&workspace_id=eq.' + encodeURIComponent(configuredId) + '&limit=1',
       { method: 'GET' }
     );
     if (Array.isArray(members) && members[0]?.workspace_id) return configuredId;
@@ -73,19 +114,20 @@ export async function ensureWorkspaceForUser(userId: string) {
       { method: 'GET' }
     );
     const workspace = Array.isArray(workspaces) ? workspaces[0] : null;
-    if (workspace?.owner_id && workspace.owner_id !== userId) {
+    if (!workspace) throw new Error('Configured MOSES workspace does not exist. Run the database schema first.');
+    if (workspace.owner_id && workspace.owner_id !== userId) {
       throw new Error('Authenticated user is not a member of the configured MOSES workspace.');
     }
-    if (!workspace?.owner_id) {
+    if (!workspace.owner_id) {
       await dbRequest('workspaces?id=eq.' + encodeURIComponent(configuredId), {
         method: 'PATCH',
         headers: { Prefer: 'return=minimal' },
         body: JSON.stringify({ owner_id: userId })
       });
     }
-    await dbRequest('workspace_members', {
+    await dbRequest('workspace_members?on_conflict=workspace_id,user_id', {
       method: 'POST',
-      headers: { Prefer: 'return=minimal' },
+      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
       body: JSON.stringify({ workspace_id: configuredId, user_id: userId, role: 'owner' })
     });
     return configuredId;
@@ -97,31 +139,17 @@ export async function ensureWorkspaceForUser(userId: string) {
   );
   if (Array.isArray(memberships) && memberships[0]?.workspace_id) return memberships[0].workspace_id as string;
 
-  const available = await dbRequest(
-    'workspaces?select=id,owner_id&owner_id=is.null&order=created_at.asc&limit=1',
-    { method: 'GET' }
-  );
-  let workspaceId: string | null = Array.isArray(available) && available[0]?.id ? available[0].id as string : null;
-
-  if (!workspaceId) {
-    const created = await dbRequest('workspaces', {
-      method: 'POST',
-      headers: { Prefer: 'return=representation' },
-      body: JSON.stringify({ name: 'Coalesce Digital', owner_id: userId })
-    });
-    if (!Array.isArray(created) || !created[0]?.id) throw new Error('Could not initialize authenticated MOSES workspace.');
-    workspaceId = created[0].id as string;
-  } else {
-    await dbRequest('workspaces?id=eq.' + encodeURIComponent(workspaceId), {
-      method: 'PATCH',
-      headers: { Prefer: 'return=minimal' },
-      body: JSON.stringify({ owner_id: userId })
-    });
-  }
-
-  await dbRequest('workspace_members', {
+  const created = await dbRequest('workspaces', {
     method: 'POST',
-    headers: { Prefer: 'return=minimal' },
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify({ name: 'Coalesce Digital', owner_id: userId })
+  });
+  if (!Array.isArray(created) || !created[0]?.id) throw new Error('Could not initialize authenticated MOSES workspace.');
+  const workspaceId = created[0].id as string;
+
+  await dbRequest('workspace_members?on_conflict=workspace_id,user_id', {
+    method: 'POST',
+    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify({ workspace_id: workspaceId, user_id: userId, role: 'owner' })
   });
 
