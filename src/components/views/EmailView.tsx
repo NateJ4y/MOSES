@@ -41,26 +41,41 @@ export const EmailView: React.FC<EmailViewProps> = ({
   const [selectedEmail, setSelectedEmail] = useState<EmailMessage | null>(emails[0] || null);
   const [replyDraft, setReplyDraft] = useState<string>('');
   const [approvalStage, setApprovalStage] = useState<'DRAFT_READY' | 'REVIEW' | 'APPROVED' | 'SENT'>('DRAFT_READY');
+  const [dispatchMessage, setDispatchMessage] = useState<string>('');
 
   const filteredEmails = emails.filter(e => currentCategory === 'INBOX' ? true : e.category === currentCategory);
 
   const handleAdvanceApproval = () => {
     playCyberSound('click');
     if (!selectedEmail) return;
+    setDispatchMessage('');
     if (approvalStage === 'DRAFT_READY') {
       setApprovalStage('REVIEW');
     } else if (approvalStage === 'REVIEW') {
       setApprovalStage('APPROVED');
       playCyberSound('response');
-    } else if (approvalStage === 'APPROVED') {
-      // V1 has no live mail provider. Approval is terminal until one is connected.
-      playCyberSound('click');
     }
+  };
+
+  const handleDispatchToEmailApp = () => {
+    playCyberSound('click');
+    if (!selectedEmail) return;
+    const recipient = selectedEmail.to.trim();
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(recipient)) {
+      setDispatchMessage('No valid recipient email is saved on this record. Add the recipient email before dispatching.');
+      return;
+    }
+    const subject = /^re:/i.test(selectedEmail.subject) ? selectedEmail.subject : `Re: ${selectedEmail.subject}`;
+    const body = replyDraft.trim() || 'Please write your reply here.';
+    const mailto = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.location.href = mailto;
+    setDispatchMessage('Your email app should open with this draft. Press Send in that app; MOSES cannot confirm delivery.');
   };
 
   const handleResetApproval = () => {
     playCyberSound('click');
     setApprovalStage('DRAFT_READY');
+    setDispatchMessage('');
   };
 
   return (
@@ -229,6 +244,7 @@ export const EmailView: React.FC<EmailViewProps> = ({
 
                 <textarea
                   rows={4}
+                  placeholder="Write the reply you want to send…"
                   value={replyDraft}
                   onChange={(e) => setReplyDraft(e.target.value)}
                   className="w-full p-3 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900 leading-relaxed focus:outline-none focus:border-zinc-400 font-sans"
@@ -267,22 +283,18 @@ export const EmailView: React.FC<EmailViewProps> = ({
 
                     {approvalStage === 'APPROVED' && (
                       <button
-                        onClick={handleAdvanceApproval}
+                        onClick={handleDispatchToEmailApp}
                         className="px-4 py-2 rounded-full bg-black hover:bg-zinc-800 text-white text-xs font-semibold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                       >
                         <Send size={13} />
-                        <span>Authorized: Approve Draft Now</span>
+                        <span>Open Email App to Send</span>
                       </button>
                     )}
 
-                    {approvalStage === 'APPROVED' && (
-                      <div className="px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 font-bold flex items-center gap-1.5">
-                        <Check size={14} />
-                        <span>Dispatched to Recipient</span>
-                      </div>
-                    )}
+
                   </div>
                 </div>
+                {dispatchMessage && <p role="status" className="text-xs text-zinc-600">{dispatchMessage}</p>}
               </div>
             </div>
           ) : (
