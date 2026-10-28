@@ -57,7 +57,7 @@ export const EmailView: React.FC<EmailViewProps> = ({
     }
   };
 
-  const handleDispatchToEmailApp = () => {
+  const handleDispatchToEmailApp = async () => {
     playCyberSound('click');
     if (!selectedEmail) return;
     const recipient = selectedEmail.to.trim();
@@ -66,10 +66,29 @@ export const EmailView: React.FC<EmailViewProps> = ({
       return;
     }
     const subject = /^re:/i.test(selectedEmail.subject) ? selectedEmail.subject : `Re: ${selectedEmail.subject}`;
-    const body = replyDraft.trim() || 'Please write your reply here.';
-    const mailto = `mailto:${encodeURIComponent(recipient)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    window.location.href = mailto;
-    setDispatchMessage('Your email app should open with this draft. Press Send in that app; MOSES cannot confirm delivery.');
+    const body = replyDraft.trim();
+    if (!body) {
+      setDispatchMessage('Write your reply before sending. MOSES will not send an empty placeholder email.');
+      return;
+    }
+
+    setDispatchMessage('Sending request to the configured email provider…');
+    try {
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: recipient, subject, text: body }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setDispatchMessage(result.error || `Email request failed (HTTP ${response.status}).`);
+        return;
+      }
+      setApprovalStage('SENT');
+      setDispatchMessage(`Email provider accepted the request${result.messageId ? ` (ID: ${result.messageId})` : ''}. This confirms provider acceptance, not delivery to the recipient inbox.`);
+    } catch {
+      setDispatchMessage('Could not reach MOSES email service. Check the connection and try again.');
+    }
   };
 
   const handleResetApproval = () => {
@@ -281,6 +300,12 @@ export const EmailView: React.FC<EmailViewProps> = ({
                       </button>
                     )}
 
+                    {approvalStage === 'SENT' && (
+                      <div className="px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 font-bold flex items-center gap-1.5">
+                        <Check size={14} />
+                        <span>Provider Accepted</span>
+                      </div>
+                    )}
                     {approvalStage === 'APPROVED' && (
                       <button
                         onClick={handleDispatchToEmailApp}
