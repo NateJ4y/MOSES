@@ -63,6 +63,8 @@ export function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [hydratedCollections, setHydratedCollections] = useState<Set<string>>(new Set());
+  const [leadLoadError, setLeadLoadError] = useState<string | null>(null);
+  const [leadWriteError, setLeadWriteError] = useState<string | null>(null);
   const [isBooting, setIsBooting] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
 
@@ -97,10 +99,14 @@ export function App() {
         });
         if (!response.ok) {
           const body = await response.json().catch(() => ({}));
-          throw new Error(body?.error || 'Database write failed.');
+          throw new Error(body?.error || `Database write failed (${response.status}).`);
         }
+        if (collection === 'leads') setLeadWriteError(null);
       } catch (error) {
-        console.warn('MOSES database write failed:', error);
+        const message = error instanceof Error ? error.message : 'Database write failed.';
+        console.error('MOSES database write failed:', error);
+        if (collection === 'leads') setLeadWriteError(message);
+        throw error;
       }
     });
     persistenceQueues.set(key, next);
@@ -149,9 +155,9 @@ export function App() {
     const load = async () => {
       const results = await Promise.allSettled(collections.map(async (collection) => {
         const response = await fetch('/api/data?collection=' + collection, { cache: 'no-store' });
-        if (response.status === 503) return { collection, records: [] };
-        const body = await response.json();
-        if (!response.ok) throw new Error(collection + ': ' + (body?.error || 'Database read failed.'));
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(collection + ': ' + (body?.error || `Database read failed (${response.status}).`));
+        if (!Array.isArray(body.records)) throw new Error(collection + ': The database returned an invalid records payload.');
         return { collection, records: Array.isArray(body.records) ? body.records : [] };
       }));
 
@@ -173,6 +179,9 @@ export function App() {
         }
       });
       setHydratedCollections(ready);
+      const leadResult = results[0];
+      if (leadResult.status === 'fulfilled') setLeadLoadError(null);
+      else setLeadLoadError(leadResult.reason instanceof Error ? leadResult.reason.message : 'Could not load leads from the database.');
     };
 
     void load();
@@ -383,6 +392,18 @@ export function App() {
 
   const handleAddLead = (newLead: Lead) => {
     setLeads(prev => [newLead, ...prev]);
+    setLeadWriteError(null);
+  };
+
+  const handleUpdateLead = (updatedLead: Lead) => {
+    setLeads(prev => prev.map(lead => lead.id === updatedLead.id ? updatedLead : lead));
+    setLeadWriteError(null);
+  };
+
+  const handleDeleteLead = (leadId: string) => {
+    setLeads(prev => prev.filter(lead => lead.id !== leadId));
+    setOutreachTargetLead(prev => prev?.id === leadId ? null : prev);
+    setLeadWriteError(null);
   };
 
   const handleSaveClientDNA = (record: ClientDNA) => {
@@ -526,6 +547,11 @@ export function App() {
               onNavigateToOutreach={handleNavigateToOutreachWithLead}
               onNavigateToBD={() => setActiveSection('BUSINESS_DEVELOPMENT')}
               onAddLead={handleAddLead}
+              onUpdateLead={handleUpdateLead}
+              onDeleteLead={handleDeleteLead}
+              loadError={leadLoadError}
+              writeError={leadWriteError}
+              onRetryLoad={() => window.location.reload()}
             />
           )}
 
