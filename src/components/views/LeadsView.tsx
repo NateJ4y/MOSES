@@ -21,6 +21,8 @@ import {
   X,
   Pencil,
   Trash2,
+  Pencil,
+  Trash2,
   FileText,
   Building2,
   MapPin,
@@ -51,6 +53,8 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   const [filterTier, setFilterTier] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [selectedDossierLead, setSelectedDossierLead] = useState<Lead | null>(null);
@@ -79,6 +83,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
       filterTier === 'ALL' || 
       lead.scoreTier === filterTier || 
       (filterTier === 'CAPACITY_RISK' && lead.capacityRisk);
+    const matchesStatus = filterStatus === 'ALL' || lead.status === filterStatus;
     const matchesStatus = filterStatus === 'ALL' || lead.status === filterStatus;
     const q = searchQuery.toLowerCase();
     const matchesQuery = 
@@ -124,6 +129,24 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
     playCyberSound('click');
   };
 
+  const resetLeadForm = () => {
+    setNewLead({ business: '', contactPerson: '', contactRole: '', email: '', phone: '', website: '', social: '', industry: '', location: '', problem: '', potentialService: '', estimatedValue: 0, status: 'NEW' });
+    setEditingLeadId(null);
+  };
+
+  const handleEditLead = (lead: Lead) => {
+    setEditingLeadId(lead.id);
+    setNewLead({ ...lead });
+    setIsAddModalOpen(true);
+  };
+
+  const handleDeleteLead = (lead: Lead) => {
+    if (!window.confirm(`Delete "${lead.business}" from the lead directory? This cannot be undone.`)) return;
+    onDeleteLead?.(lead.id);
+    if (selectedDossierLead?.id === lead.id) setSelectedDossierLead(null);
+    playCyberSound('click');
+  };
+
   const handleCreateLead = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLead.business?.trim()) return;
@@ -131,14 +154,16 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
     if (editingLeadId) {
       const existing = safeLeads.find((lead) => lead.id === editingLeadId);
       if (!existing) return;
-      const updated: Lead = {
+      const updated = {
         ...existing,
         ...newLead,
         id: existing.id,
         business: newLead.business.trim(),
-        website: newLead.website?.trim() || '',
+        contactPerson: newLead.contactPerson?.trim() || undefined,
+        contactRole: newLead.contactRole?.trim() || undefined,
         email: newLead.email?.trim() || '',
         phone: newLead.phone?.trim() || '',
+        website: newLead.website?.trim() || '',
         social: newLead.social?.trim() || '',
         industry: newLead.industry?.trim() || '',
         location: newLead.location?.trim() || '',
@@ -157,10 +182,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
         phone: newLead.phone?.trim() || '',
         website: newLead.website?.trim() || '',
         social: newLead.social?.trim() || '',
-        socialLinks: {
-          instagram: newLead.social?.includes('instagram.com') ? newLead.social : undefined,
-          whatsapp: newLead.phone?.trim() || undefined
-        },
+        socialLinks: { whatsapp: newLead.phone?.trim() || undefined },
         industry: newLead.industry?.trim() || '',
         location: newLead.location?.trim() || '',
         problem: newLead.problem?.trim() || '',
@@ -204,6 +226,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => {
+              resetLeadForm();
               resetLeadForm();
               playCyberSound('click');
               setIsAddModalOpen(true);
@@ -269,8 +292,15 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
               <option key={status} value={status}>{status.replace('_', ' ')}</option>
             ))}
           </select>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-1.5 rounded-full bg-white border border-zinc-200 text-[11px] text-zinc-700 font-semibold" aria-label="Filter leads by pipeline status">
+            <option value="ALL">All statuses</option>
+            {['NEW','QUALIFIED','CONTACTED','CONVERSATION','OPPORTUNITY','PROPOSAL','WON','LOST'].map(status => <option key={status} value={status}>{status.replace('_', ' ')}</option>)}
+          </select>
         </div>
       </div>
+
+      {loadError && <div role="alert" className="p-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs flex items-center justify-between gap-3"><span><strong>Lead records could not be loaded.</strong> {loadError} No empty replacement has been saved.</span><button type="button" onClick={onRetryLoad} className="underline font-bold shrink-0">Retry</button></div>}
+      {writeError && <div role="alert" className="p-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs"><strong>Lead changes may not be saved.</strong> {writeError} Check the connection before relying on these changes.</div>}
 
       {/* Leads Cards Grid */}
       {filteredLeads.length > 0 ? (
