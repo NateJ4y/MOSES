@@ -19,6 +19,8 @@ import {
   User,
   Plus,
   X,
+  Pencil,
+  Trash2,
   FileText,
   Building2,
   MapPin,
@@ -34,15 +36,21 @@ interface LeadsViewProps {
   onNavigateToOutreach: (lead: Lead) => void;
   onNavigateToBD: () => void;
   onAddLead?: (lead: Lead) => void;
+  onUpdateLead?: (lead: Lead) => void;
+  onDeleteLead?: (leadId: string) => void;
 }
 
 export const LeadsView: React.FC<LeadsViewProps> = ({
   leads,
   onNavigateToOutreach,
   onNavigateToBD,
-  onAddLead
+  onAddLead,
+  onUpdateLead,
+  onDeleteLead
 }) => {
   const [filterTier, setFilterTier] = useState<string>('ALL');
+  const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [selectedDossierLead, setSelectedDossierLead] = useState<Lead | null>(null);
@@ -60,7 +68,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
     industry: '',
     location: '',
     problem: '',
-    potentialService: 'Websites / Web Development',
+    potentialService: '',
     estimatedValue: 0,
     status: 'NEW'
   });
@@ -71,6 +79,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
       filterTier === 'ALL' || 
       lead.scoreTier === filterTier || 
       (filterTier === 'CAPACITY_RISK' && lead.capacityRisk);
+    const matchesStatus = filterStatus === 'ALL' || lead.status === filterStatus;
     const q = searchQuery.toLowerCase();
     const matchesQuery = 
       (lead.business || '').toLowerCase().includes(q) ||
@@ -81,7 +90,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
       (lead.industry || '').toLowerCase().includes(q) ||
       (lead.problem || '').toLowerCase().includes(q) ||
       (lead.potentialService || '').toLowerCase().includes(q);
-    return matchesTier && matchesQuery;
+    return matchesTier && matchesStatus && matchesQuery;
   });
 
   const copyToClipboard = (text: string, fieldId: string, e?: React.MouseEvent) => {
@@ -92,42 +101,85 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
     setTimeout(() => setCopiedField(null), 2000);
   };
 
+  const resetLeadForm = () => {
+    setNewLead({
+      business: '', contactPerson: '', contactRole: '', email: '', phone: '',
+      website: '', social: '', industry: '', location: '', problem: '',
+      potentialService: '', estimatedValue: 0, status: 'NEW'
+    });
+    setEditingLeadId(null);
+  };
+
+  const handleEditLead = (lead: Lead) => {
+    setEditingLeadId(lead.id);
+    setNewLead({ ...lead });
+    setIsAddModalOpen(true);
+  };
+
+  const handleDeleteLead = (lead: Lead) => {
+    const confirmed = window.confirm(`Delete "${lead.business}" from the lead directory? This cannot be undone.`);
+    if (!confirmed) return;
+    onDeleteLead?.(lead.id);
+    if (selectedDossierLead?.id === lead.id) setSelectedDossierLead(null);
+    playCyberSound('click');
+  };
+
   const handleCreateLead = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newLead.business?.trim()) return;
 
-    const created: Lead = {
-      id: `lead-${Date.now()}`,
-      business: newLead.business || 'Untitled Lead',
-      contactPerson: newLead.contactPerson || undefined,
-      contactRole: newLead.contactRole || undefined,
-      email: newLead.email || '',
-      phone: newLead.phone || '',
-      website: newLead.website?.startsWith('http') ? newLead.website : newLead.website ? `https://${newLead.website}` : '',
-      social: newLead.social || '',
-      socialLinks: {
-        instagram: newLead.social?.includes('instagram') || newLead.social?.includes('@') ? newLead.social : undefined,
-        whatsapp: newLead.phone || undefined
-      },
-      industry: newLead.industry || 'UNKNOWN',
-      location: newLead.location || 'UNKNOWN',
-      problem: newLead.problem || 'UNKNOWN',
-      potentialService: newLead.potentialService || 'Websites + AI Automation',
-      leadScore: 0,
-      scoreTier: 'UNSCORED',
-      status: (newLead.status as LeadStatus) || 'NEW',
-      estimatedValue: Number(newLead.estimatedValue) || 0,
-      nextAction: 'RESEARCH REQUIRED',
-      lastContact: 'NEVER',
-      followUpDate: 'NOT SET',
-      scoreExplanation: 'UNSCORED — insufficient evidence. Research required before qualification.',
-      signals: []
-    };
-
-    if (onAddLead) {
-      onAddLead(created);
+    if (editingLeadId) {
+      const existing = safeLeads.find((lead) => lead.id === editingLeadId);
+      if (!existing) return;
+      const updated: Lead = {
+        ...existing,
+        ...newLead,
+        id: existing.id,
+        business: newLead.business.trim(),
+        website: newLead.website?.trim() || '',
+        email: newLead.email?.trim() || '',
+        phone: newLead.phone?.trim() || '',
+        social: newLead.social?.trim() || '',
+        industry: newLead.industry?.trim() || '',
+        location: newLead.location?.trim() || '',
+        problem: newLead.problem?.trim() || '',
+        potentialService: newLead.potentialService?.trim() || '',
+        estimatedValue: Number(newLead.estimatedValue) || 0
+      } as Lead;
+      onUpdateLead?.(updated);
+    } else {
+      const created: Lead = {
+        id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `lead-${Date.now()}`,
+        business: newLead.business.trim(),
+        contactPerson: newLead.contactPerson?.trim() || undefined,
+        contactRole: newLead.contactRole?.trim() || undefined,
+        email: newLead.email?.trim() || '',
+        phone: newLead.phone?.trim() || '',
+        website: newLead.website?.trim() || '',
+        social: newLead.social?.trim() || '',
+        socialLinks: {
+          instagram: newLead.social?.includes('instagram.com') ? newLead.social : undefined,
+          whatsapp: newLead.phone?.trim() || undefined
+        },
+        industry: newLead.industry?.trim() || '',
+        location: newLead.location?.trim() || '',
+        problem: newLead.problem?.trim() || '',
+        potentialService: newLead.potentialService?.trim() || '',
+        leadScore: 0,
+        scoreTier: 'UNSCORED',
+        status: (newLead.status as LeadStatus) || 'NEW',
+        estimatedValue: Number(newLead.estimatedValue) || 0,
+        nextAction: 'Research required',
+        lastContact: '',
+        followUpDate: '',
+        scoreExplanation: 'Not scored. Verified evidence is required before qualification.',
+        signals: []
+      };
+      onAddLead?.(created);
     }
+
     setIsAddModalOpen(false);
+    resetLeadForm();
     playCyberSound('boot');
   };
 
@@ -152,6 +204,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => {
+              resetLeadForm();
               playCyberSound('click');
               setIsAddModalOpen(true);
             }}
@@ -205,6 +258,17 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
               {t.replace('_', ' ')}
             </button>
           ))}
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-3 py-1.5 rounded-full bg-white border border-zinc-200 text-[11px] text-zinc-700 font-semibold"
+            aria-label="Filter leads by pipeline status"
+          >
+            <option value="ALL">All statuses</option>
+            {['NEW','QUALIFIED','CONTACTED','CONVERSATION','OPPORTUNITY','PROPOSAL','WON','LOST'].map(status => (
+              <option key={status} value={status}>{status.replace('_', ' ')}</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -468,16 +532,36 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                   <span className="text-sm font-bold text-zinc-900 font-display">R{lead.estimatedValue.toLocaleString()}</span>
                 </div>
 
-                <button
-                  onClick={() => {
-                    playCyberSound('click');
-                    onNavigateToOutreach(lead);
-                  }}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleEditLead(lead)}
+                    className="p-2 rounded-full border border-zinc-200 text-zinc-600 hover:text-black hover:bg-zinc-100"
+                    title="Edit lead"
+                    aria-label={`Edit ${lead.business}`}
+                  >
+                    <Pencil size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteLead(lead)}
+                    className="p-2 rounded-full border border-zinc-200 text-zinc-500 hover:text-rose-700 hover:bg-rose-50"
+                    title="Delete lead"
+                    aria-label={`Delete ${lead.business}`}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      playCyberSound('click');
+                      onNavigateToOutreach(lead);
+                    }
                   className="px-3.5 py-1.5 rounded-full bg-black hover:bg-zinc-800 text-white text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
                 >
                   <Send size={11} strokeWidth={2} />
-                  <span>Draft Outreach</span>
-                </button>
+                    <span>Draft Outreach</span>
+                  </button>
+                </div>
               </div>
             </div>
           );
@@ -489,10 +573,10 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
             <Users size={22} className="text-zinc-500" />
           </div>
           <h3 className="font-display text-base font-bold text-zinc-900">
-            {searchQuery || filterTier !== 'ALL' ? 'No Matching Prospects Found' : 'Prospect Directory Is Clear'}
+            {searchQuery || filterTier !== 'ALL' || filterStatus !== 'ALL' ? 'No Matching Prospects Found' : 'Prospect Directory Is Clear'}
           </h3>
           <p className="text-xs text-zinc-500 max-w-md mt-1 leading-relaxed">
-            {searchQuery || filterTier !== 'ALL'
+            {searchQuery || filterTier !== 'ALL' || filterStatus !== 'ALL'
               ? 'Try adjusting your search query or filter criteria.'
               : 'The OS is operating in default clean mode. Qualify a new target lead or prompt Moses to conduct automated outreach radar scanning.'}
           </p>
@@ -511,6 +595,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                 onClick={() => {
                   setSearchQuery('');
                   setFilterTier('ALL');
+                  setFilterStatus('ALL');
                 }}
                 className="px-4 py-2 rounded-full bg-zinc-200 hover:bg-zinc-300 text-zinc-800 text-xs font-semibold transition-all cursor-pointer"
               >
@@ -670,11 +755,11 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                   <Plus size={16} strokeWidth={2} />
                 </div>
                 <h3 className="font-display text-lg font-bold text-zinc-900">
-                  Add New Prospect Lead
+                  {editingLeadId ? 'Edit Prospect Lead' : 'Add New Prospect Lead'}
                 </h3>
               </div>
               <button
-                onClick={() => setIsAddModalOpen(false)}
+                onClick={() => { setIsAddModalOpen(false); resetLeadForm(); }}
                 className="p-2 rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-zinc-900 transition-colors cursor-pointer"
               >
                 <X size={16} strokeWidth={1.75} />
@@ -836,7 +921,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                   </label>
                   <input
                     type="number"
-                    value={newLead.estimatedValue || 5000}
+                    value={newLead.estimatedValue ?? 0}
                     onChange={(e) => setNewLead({ ...newLead, estimatedValue: Number(e.target.value) })}
                     className="w-full px-3.5 py-2 rounded-xl bg-zinc-50 border border-zinc-200 text-zinc-900 focus:outline-none focus:border-zinc-400 font-medium"
                   />
@@ -847,7 +932,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-zinc-200">
                 <button
                   type="button"
-                  onClick={() => setIsAddModalOpen(false)}
+                  onClick={() => { setIsAddModalOpen(false); resetLeadForm(); }}
                   className="px-5 py-2.5 rounded-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold cursor-pointer"
                 >
                   Cancel
@@ -856,7 +941,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
                   type="submit"
                   className="px-5 py-2.5 rounded-full bg-black hover:bg-zinc-800 text-white font-semibold text-xs shadow-xs cursor-pointer transition-all"
                 >
-                  Save Lead to Directory
+                  {editingLeadId ? 'Save Lead Changes' : 'Save Lead to Directory'}
                 </button>
               </div>
             </form>
