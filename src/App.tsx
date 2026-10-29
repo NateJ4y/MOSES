@@ -106,7 +106,6 @@ export function App() {
         const message = error instanceof Error ? error.message : 'Database write failed.';
         console.error('MOSES database write failed:', error);
         if (collection === 'leads') setLeadWriteError(message);
-        throw error;
       }
     });
     persistenceQueues.set(key, next);
