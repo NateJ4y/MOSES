@@ -226,7 +226,6 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
           <button
             onClick={() => {
               resetLeadForm();
-              resetLeadForm();
               playCyberSound('click');
               setIsAddModalOpen(true);
             }}
@@ -290,10 +289,6 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
             {['NEW','QUALIFIED','CONTACTED','CONVERSATION','OPPORTUNITY','PROPOSAL','WON','LOST'].map(status => (
               <option key={status} value={status}>{status.replace('_', ' ')}</option>
             ))}
-          </select>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="px-3 py-1.5 rounded-full bg-white border border-zinc-200 text-[11px] text-zinc-700 font-semibold" aria-label="Filter leads by pipeline status">
-            <option value="ALL">All statuses</option>
-            {['NEW','QUALIFIED','CONTACTED','CONVERSATION','OPPORTUNITY','PROPOSAL','WON','LOST'].map(status => <option key={status} value={status}>{status.replace('_', ' ')}</option>)}
           </select>
         </div>
       </div>
