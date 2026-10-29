@@ -84,7 +84,6 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
       lead.scoreTier === filterTier || 
       (filterTier === 'CAPACITY_RISK' && lead.capacityRisk);
     const matchesStatus = filterStatus === 'ALL' || lead.status === filterStatus;
-    const matchesStatus = filterStatus === 'ALL' || lead.status === filterStatus;
     const q = searchQuery.toLowerCase();
     const matchesQuery = 
       (lead.business || '').toLowerCase().includes(q) ||
