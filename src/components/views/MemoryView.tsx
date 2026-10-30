@@ -149,7 +149,8 @@ export const MemoryView: React.FC = () => {
           <div className="flex justify-end pt-1">
             <button
               type="submit"
-              className="px-5 py-2 rounded-full bg-black hover:bg-zinc-800 text-white text-xs font-semibold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              disabled={!hydrated}
+              className="px-5 py-2 rounded-full bg-black disabled:opacity-40 hover:bg-zinc-800 text-white text-xs font-semibold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
               <Save size={13} />
               <span>Commit to Moses Memory</span>
