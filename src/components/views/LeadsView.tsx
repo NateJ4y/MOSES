@@ -563,8 +563,8 @@ export function LeadsView({
                     onClick={() => {
                       playCyberSound('click');
                       onNavigateToOutreach(lead);
-                    }
-                  className="px-3.5 py-1.5 rounded-full bg-black hover:bg-zinc-800 text-white text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                    }}
+                    className="px-3.5 py-1.5 rounded-full bg-black hover:bg-zinc-800 text-white text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
                 >
                   <Send size={11} strokeWidth={2} />
                     <span>Draft Outreach</span>
