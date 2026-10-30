@@ -10,7 +10,8 @@ import {
   ShieldCheck,
   Check,
   Copy,
-  FolderOpen
+  FolderOpen,
+  Trash2
 } from 'lucide-react';
 import { KnowledgeDoc } from '../../types';
 import { playCyberSound } from '../../utils/audio';
@@ -18,11 +19,76 @@ import { playCyberSound } from '../../utils/audio';
 export const KnowledgeView: React.FC = () => {
   const [docs] = useState<KnowledgeDoc[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<KnowledgeDoc | null>(null);
+  const [hydrated, setHydrated] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [newTitle, setNewTitle] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [newCategory, setNewCategory] = useState<KnowledgeDoc['category']>('OPERATIONS');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [copied, setCopied] = useState(false);
 
   const categories = ['ALL', 'BRAND', 'PRICING', 'SCRIPTS', 'OPERATIONS', 'DECISIONS', 'CLIENT_HISTORY'];
+
+  React.useEffect(() => {
+    let cancelled = false;
+    fetch('/api/data?collection=knowledge', { cache: 'no-store' })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body?.error || 'Knowledge could not be loaded from the database.');
+        if (!Array.isArray(body.records)) throw new Error('Knowledge database response was invalid.');
+        if (!cancelled) {
+          setDocs(body.records);
+          setSelectedDoc(body.records[0] || null);
+          setLoadError(null);
+          setHydrated(true);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) setLoadError(error instanceof Error ? error.message : 'Knowledge could not be loaded.');
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  React.useEffect(() => {
+    if (!hydrated) return;
+    fetch('/api/data?collection=knowledge', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(docs)
+    }).then(async (response) => {
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.error || 'Knowledge could not be saved.');
+      }
+      setLoadError(null);
+    }).catch((error) => setLoadError(error instanceof Error ? error.message : 'Knowledge could not be saved.'));
+  }, [docs, hydrated]);
+
+  const handleAddDoc = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!newTitle.trim() || !newContent.trim()) return;
+    const doc: KnowledgeDoc = {
+      id: 'knowledge-' + Date.now(),
+      title: newTitle.trim(),
+      category: newCategory,
+      content: newContent.trim(),
+      tags: [],
+      lastUpdated: new Date().toISOString().slice(0, 10)
+    };
+    setDocs((current) => [doc, ...current]);
+    setSelectedDoc(doc);
+    setNewTitle('');
+    setNewContent('');
+    playCyberSound('response');
+  };
+
+  const handleDeleteDoc = (id: string) => {
+    const remaining = docs.filter((doc) => doc.id !== id);
+    setDocs(remaining);
+    if (selectedDoc?.id === id) setSelectedDoc(remaining[0] || null);
+    playCyberSound('click');
+  };
 
   const safeDocs = docs || [];
   const filteredDocs = safeDocs.filter((doc) => {
@@ -65,6 +131,17 @@ export const KnowledgeView: React.FC = () => {
           <span>Awaiting verified knowledge records</span>
         </div>
       </div>
+
+      {loadError && <div className="p-3 rounded-xl border border-red-200 bg-red-50 text-xs text-red-700">{loadError} Changes are not confirmed saved.</div>}
+
+      <form onSubmit={handleAddDoc} className="grid grid-cols-1 sm:grid-cols-4 gap-3 p-4 rounded-2xl border border-zinc-200 bg-white">
+        <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} required placeholder="Document title" className="sm:col-span-2 p-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900" />
+        <select value={newCategory} onChange={(e) => setNewCategory(e.target.value as KnowledgeDoc['category'])} className="p-2.5 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900">
+          {categories.filter((category) => category !== 'ALL').map((category) => <option key={category} value={category}>{category.replace('_', ' ')}</option>)}
+        </select>
+        <button type="submit" disabled={!hydrated} className="px-4 py-2 rounded-xl bg-black text-white text-xs font-semibold disabled:opacity-40"><Plus size={13} className="inline mr-1" />Add knowledge</button>
+        <textarea value={newContent} onChange={(e) => setNewContent(e.target.value)} required placeholder="Add verified business knowledge, decisions, processes, or approved playbooks..." rows={3} className="sm:col-span-4 p-3 rounded-xl bg-zinc-50 border border-zinc-200 text-xs text-zinc-900" />
+      </form>
 
       {/* Search & Category Filter */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-zinc-50 p-3.5 rounded-2xl border border-zinc-200">
@@ -109,6 +186,7 @@ export const KnowledgeView: React.FC = () => {
           </div>
 
           <div className="space-y-2 max-h-[550px] overflow-y-auto pr-1 scrollbar-thin">
+            {hydrated && filteredDocs.length === 0 && <div className="p-6 rounded-xl border border-dashed border-zinc-300 text-center text-xs text-zinc-500">No knowledge records found. Add approved information above.</div>}
             {filteredDocs.map((doc) => {
               const isSelected = selectedDoc?.id === doc.id;
 
@@ -135,6 +213,7 @@ export const KnowledgeView: React.FC = () => {
                   <h4 className="text-xs font-bold text-zinc-900 mb-1">{doc.title}</h4>
                   <p className="text-[11px] text-zinc-600 line-clamp-2">{doc.content}</p>
 
+                  <div className="flex justify-end mt-2"><button type="button" onClick={(event) => { event.stopPropagation(); handleDeleteDoc(doc.id); }} className="text-[10px] text-zinc-400 hover:text-red-600 flex items-center gap-1"><Trash2 size={11} /> Delete</button></div>
                   <div className="flex flex-wrap gap-1 mt-2.5">
                     {doc.tags.map((tag, i) => (
                       <span key={i} className="text-[9px] text-zinc-400 font-medium">
@@ -183,7 +262,7 @@ export const KnowledgeView: React.FC = () => {
                   <Tag size={12} className="text-zinc-500" />
                   <span>Tags: {selectedDoc.tags.join(', ')}</span>
                 </div>
-                <span>Memory node: {selectedDoc.id}</span>
+                <span>Knowledge record: {selectedDoc.id}</span>
               </div>
             </div>
           ) : (
