@@ -43,7 +43,7 @@ interface LeadsViewProps {
   onRetryLoad?: () => void;
 }
 
-export const LeadsView: React.FC<LeadsViewProps> = ({
+export function LeadsView({
   leads,
   onNavigateToOutreach,
   onNavigateToBD,
@@ -53,7 +53,7 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   loadError,
   writeError,
   onRetryLoad
-}) => {
+}: LeadsViewProps) {
   const [filterTier, setFilterTier] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
