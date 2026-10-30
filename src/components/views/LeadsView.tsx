@@ -21,8 +21,6 @@ import {
   X,
   Pencil,
   Trash2,
-  Pencil,
-  Trash2,
   FileText,
   Building2,
   MapPin,
@@ -40,6 +38,9 @@ interface LeadsViewProps {
   onAddLead?: (lead: Lead) => void;
   onUpdateLead?: (lead: Lead) => void;
   onDeleteLead?: (leadId: string) => void;
+  loadError?: string | null;
+  writeError?: string | null;
+  onRetryLoad?: () => void;
 }
 
 export const LeadsView: React.FC<LeadsViewProps> = ({
@@ -48,11 +49,12 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   onNavigateToBD,
   onAddLead,
   onUpdateLead,
-  onDeleteLead
+  onDeleteLead,
+  loadError,
+  writeError,
+  onRetryLoad
 }) => {
   const [filterTier, setFilterTier] = useState<string>('ALL');
-  const [filterStatus, setFilterStatus] = useState<string>('ALL');
-  const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -123,24 +125,6 @@ export const LeadsView: React.FC<LeadsViewProps> = ({
   const handleDeleteLead = (lead: Lead) => {
     const confirmed = window.confirm(`Delete "${lead.business}" from the lead directory? This cannot be undone.`);
     if (!confirmed) return;
-    onDeleteLead?.(lead.id);
-    if (selectedDossierLead?.id === lead.id) setSelectedDossierLead(null);
-    playCyberSound('click');
-  };
-
-  const resetLeadForm = () => {
-    setNewLead({ business: '', contactPerson: '', contactRole: '', email: '', phone: '', website: '', social: '', industry: '', location: '', problem: '', potentialService: '', estimatedValue: 0, status: 'NEW' });
-    setEditingLeadId(null);
-  };
-
-  const handleEditLead = (lead: Lead) => {
-    setEditingLeadId(lead.id);
-    setNewLead({ ...lead });
-    setIsAddModalOpen(true);
-  };
-
-  const handleDeleteLead = (lead: Lead) => {
-    if (!window.confirm(`Delete "${lead.business}" from the lead directory? This cannot be undone.`)) return;
     onDeleteLead?.(lead.id);
     if (selectedDossierLead?.id === lead.id) setSelectedDossierLead(null);
     playCyberSound('click');
