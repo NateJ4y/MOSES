@@ -26,14 +26,43 @@ const INITIAL_RULES: MemoryRule[] = [];
 export const MemoryView: React.FC = () => {
   const [rules, setRules] = useState<MemoryRule[]>(INITIAL_RULES);
   const [hydrated, setHydrated] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [newRule, setNewRule] = useState('');
   const [newCategory, setNewCategory] = useState<MemoryRule['category']>('TACTICAL_HEURISTIC');
 
   React.useEffect(() => {
-    try { const raw = localStorage.getItem('moses.memory.v1'); if (raw) setRules(JSON.parse(raw)); } catch {}
-    setHydrated(true);
+    let cancelled = false;
+    fetch('/api/data?collection=memory', { cache: 'no-store' })
+      .then(async (response) => {
+        const body = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(body?.error || 'Memory could not be loaded from the database.');
+        if (!Array.isArray(body.records)) throw new Error('Memory database response was invalid.');
+        if (!cancelled) {
+          setRules(body.records);
+          setLoadError(null);
+          setHydrated(true);
+        }
+      })
+      .catch((error) => {
+        if (!cancelled) setLoadError(error instanceof Error ? error.message : 'Memory could not be loaded.');
+      });
+    return () => { cancelled = true; };
   }, []);
-  React.useEffect(() => { if (hydrated) { try { localStorage.setItem('moses.memory.v1', JSON.stringify(rules)); } catch {} } }, [rules, hydrated]);
+
+  React.useEffect(() => {
+    if (!hydrated) return;
+    fetch('/api/data?collection=memory', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rules)
+    }).then(async (response) => {
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.error || 'Memory could not be saved.');
+      }
+      setLoadError(null);
+    }).catch((error) => setLoadError(error instanceof Error ? error.message : 'Memory could not be saved.'));
+  }, [rules, hydrated]);
 
   const handleAddRule = (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +106,7 @@ export const MemoryView: React.FC = () => {
 
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 border border-zinc-200 text-xs text-zinc-800 font-semibold">
           <Database size={13} className="text-zinc-900" />
-          <span>Persistent Local Memory</span>
+          <span>{hydrated ? "Supabase Memory" : "Connecting to Memory"}</span>
         </div>
       </div>
 
@@ -129,6 +158,8 @@ export const MemoryView: React.FC = () => {
         </form>
       </div>
 
+      {loadError && <div className="p-3 rounded-xl border border-red-200 bg-red-50 text-xs text-red-700">{loadError} Changes are not confirmed saved.</div>}
+
       {/* Rules Registry List */}
       <div className="space-y-3">
         <div className="text-xs font-bold text-zinc-900 flex items-center justify-between">
@@ -137,6 +168,7 @@ export const MemoryView: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {hydrated && rules.length === 0 && <div className="md:col-span-2 p-8 rounded-2xl border border-dashed border-zinc-300 text-center text-xs text-zinc-500">No verified memory records yet. Add an approved rule above.</div>}
           {rules.map((r) => (
             <div
               key={r.id}
