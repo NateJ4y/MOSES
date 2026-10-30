@@ -125,7 +125,7 @@ export const SystemsView: React.FC = () => {
         {/* Blueprint Title */}
         <div className="flex items-center justify-between text-xs text-zinc-500 border-b border-zinc-200 pb-3 mb-4">
           <span className="text-zinc-900 font-bold">
-            Blueprint: Instant Lead Qualification &amp; WhatsApp Dispatch
+            Workflow template: Instant Lead Qualification &amp; WhatsApp Dispatch
           </span>
           <span className="text-[10px] text-emerald-700 font-medium">
             {runStatus === 'RUNNING' ? '● Executing connected workflow' : `○ ${runStatus}`}
@@ -187,7 +187,7 @@ export const SystemsView: React.FC = () => {
 
             <div className="flex items-center gap-2">
               <span className="text-[10px] text-emerald-700 font-semibold">
-                n8n Compatible &bull; JSON Schema Valid
+                Template only &bull; No provider connection verified
               </span>
             </div>
           </div>
