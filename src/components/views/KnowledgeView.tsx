@@ -17,7 +17,7 @@ import { KnowledgeDoc } from '../../types';
 import { playCyberSound } from '../../utils/audio';
 
 export const KnowledgeView: React.FC = () => {
-  const [docs] = useState<KnowledgeDoc[]>([]);
+  const [docs, setDocs] = useState<KnowledgeDoc[]>([]);
   const [selectedDoc, setSelectedDoc] = useState<KnowledgeDoc | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
