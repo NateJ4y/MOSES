@@ -13,12 +13,11 @@ import {
   FolderOpen
 } from 'lucide-react';
 import { KnowledgeDoc } from '../../types';
-import { INITIAL_KNOWLEDGE_DOCS } from '../../data/initialData';
 import { playCyberSound } from '../../utils/audio';
 
 export const KnowledgeView: React.FC = () => {
-  const [docs, setDocs] = useState<KnowledgeDoc[]>(INITIAL_KNOWLEDGE_DOCS);
-  const [selectedDoc, setSelectedDoc] = useState<KnowledgeDoc | null>(INITIAL_KNOWLEDGE_DOCS[0] || null);
+  const [docs] = useState<KnowledgeDoc[]>([]);
+  const [selectedDoc, setSelectedDoc] = useState<KnowledgeDoc | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [copied, setCopied] = useState(false);
@@ -57,13 +56,13 @@ export const KnowledgeView: React.FC = () => {
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-zinc-500 mt-1 font-normal">
-            Coalesce Core DNA, Skeem Method Playbooks, Flexible Pricing &amp; Moses Memory Bank
+            Verified business knowledge and approved operating documentation
           </p>
         </div>
 
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-100 border border-zinc-200 text-xs text-zinc-800 font-semibold">
           <Brain size={14} className="text-zinc-900" />
-          <span>Memory Engine Synchronized</span>
+          <span>Awaiting verified knowledge records</span>
         </div>
       </div>
 
@@ -189,7 +188,7 @@ export const KnowledgeView: React.FC = () => {
             </div>
           ) : (
             <div className="p-8 rounded-2xl bg-zinc-50 border border-zinc-200 text-center text-zinc-400 text-xs">
-              Select a knowledge entry from the vault to inspect details.
+              No knowledge records have been added yet. MOSES will not invent or preload business documentation.
             </div>
           )}
         </div>
