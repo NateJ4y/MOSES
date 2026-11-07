@@ -15,7 +15,8 @@ import {
   Sparkles,
   Database,
   RotateCcw,
-  LogOut
+  LogOut,
+  LogIn
 } from 'lucide-react';
 import { playCyberSound } from '../../utils/audio';
 
@@ -75,18 +76,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       </div>
 
       <form onSubmit={handleSave} className="space-y-5">
-        <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-xs flex items-center justify-between gap-4">
+        <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
               <ShieldCheck size={17} className="text-zinc-700" />
-              <h3 className="font-display text-sm font-bold text-zinc-900 uppercase tracking-wider">Authenticated Identity</h3>
+              <h3 className="font-display text-sm font-bold text-zinc-900 uppercase tracking-wider">Account &amp; Session</h3>
             </div>
-            <p className="text-[11px] text-zinc-500 mt-1">Your MOSES session is protected by Supabase Auth.</p>
+            <p className="text-[11px] text-zinc-500 mt-1">Manage access to your MOSES workspace. Sign in with another account or securely end the current session.</p>
           </div>
-          <button type="button" onClick={() => { playCyberSound('click'); window.location.assign('/logout'); }} className="px-3.5 py-1.5 rounded-full bg-zinc-100 hover:bg-black hover:text-white border border-zinc-200 text-xs font-semibold transition-colors inline-flex items-center gap-1.5">
-            <LogOut size={13} />
-            Sign out
-          </button>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button type="button" onClick={() => { playCyberSound('click'); window.location.assign('/login?switch=1'); }} className="px-3.5 py-2 rounded-full bg-white hover:bg-zinc-100 border border-zinc-300 text-xs font-semibold transition-colors inline-flex items-center gap-1.5">
+              <LogIn size={13} />
+              Sign in / Switch account
+            </button>
+            <button type="button" onClick={() => { playCyberSound('click'); window.location.assign('/logout'); }} className="px-3.5 py-2 rounded-full bg-black hover:bg-zinc-800 text-white text-xs font-semibold transition-colors inline-flex items-center gap-1.5">
+              <LogOut size={13} />
+              Sign out
+            </button>
+          </div>
         </div>
         {/* Theme Engine */}
         <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-xs space-y-4">
