@@ -1,21 +1,57 @@
 export type MosesProvider = 'gemini';
 
+export const MOSES_COLLECTION_NAMES = [
+  'companies',
+  'contacts',
+  'leads',
+  'clients',
+  'client_dna',
+  'projects',
+  'tasks',
+  'services',
+  'offers',
+  'outreach',
+  'messages',
+  'emails',
+  'research',
+  'knowledge',
+  'memory',
+  'workflows',
+  'workflow_runs',
+  'activities',
+  'goals_kpis',
+  'documents',
+  'integrations',
+  'settings',
+] as const;
+
+export type MosesCollection = (typeof MOSES_COLLECTION_NAMES)[number];
+export type CollectionLoadStatus = 'loaded' | 'empty' | 'unavailable' | 'truncated';
+
+export interface MosesCollectionInput {
+  records?: unknown[];
+  error?: boolean;
+}
+
+export interface MosesCollectionContext {
+  status: CollectionLoadStatus;
+  count: number;
+  fetchedCount: number;
+  truncated: boolean;
+  records: unknown[];
+}
+
 export interface MosesContext {
   activeSection: string;
-  leads: unknown[];
-  projects: unknown[];
-  emails: unknown[];
-  clientDNA: unknown[];
-  messages: unknown[];
-  memory: unknown[];
-  knowledge: unknown[];
+  collections: Record<MosesCollection, MosesCollectionContext>;
   system: {
-    leadCount: number;
-    projectCount: number;
-    emailCount: number;
-    clientDNACount: number;
-    memoryCount: number;
-    knowledgeCount: number;
+    completeness: 'complete' | 'partial';
+    collectionCount: number;
+    loadedCollections: number;
+    emptyCollections: number;
+    unavailableCollections: number;
+    truncatedCollections: number;
+    totalRecords: number;
   };
 }
 
