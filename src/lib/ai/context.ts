@@ -23,14 +23,21 @@ function sanitizeValue(value: unknown, depth = 0): unknown {
   }
   if (depth >= MAX_DEPTH) return '[DEPTH LIMITED]';
   if (Array.isArray(value)) {
-    return value.slice(0, MAX_ARRAY_ITEMS).map((item) => sanitizeValue(item, depth + 1));
+    const items = value.slice(0, MAX_ARRAY_ITEMS).map((item) => sanitizeValue(item, depth + 1));
+    if (value.length > MAX_ARRAY_ITEMS) items.push(`[TRUNCATED: ${value.length - MAX_ARRAY_ITEMS} additional array items omitted]`);
+    return items;
   }
   if (typeof value === 'object') {
-    const entries = Object.entries(value as Record<string, unknown>).slice(0, MAX_OBJECT_KEYS);
-    return Object.fromEntries(entries.map(([key, item]) => [
+    const allEntries = Object.entries(value as Record<string, unknown>);
+    const entries = allEntries.slice(0, MAX_OBJECT_KEYS);
+    const safe = Object.fromEntries(entries.map(([key, item]) => [
       key,
       SECRET_KEY.test(key) ? '[REDACTED]' : sanitizeValue(item, depth + 1),
     ]));
+    if (allEntries.length > MAX_OBJECT_KEYS) {
+      safe._mosesTruncatedFields = allEntries.length - MAX_OBJECT_KEYS;
+    }
+    return safe;
   }
   return String(value);
 }
