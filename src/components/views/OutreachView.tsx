@@ -101,12 +101,7 @@ Record the source and date of each observation. Do not turn a guess into a probl
       : stage === 'OFFER' ? `A possible next step for ${business}`
       : `A quick introduction — Coalesce Digital`;
     const paragraphs: string[] = [opening, ''];
-    if (stage === 'IDENTIFY') paragraphs.push(
-      `I’m reaching out because I came across ${business} and wanted to introduce myself.`,
-      detail ? detail : 'I’m taking a closer look at how businesses present and support their services online, and I wanted to understand your current priorities.',
-      'Are you the right person to speak with about your website and digital operations?'
-    );
-    else if (stage === 'ENGAGE') paragraphs.push(
+    if (stage === 'ENGAGE') paragraphs.push(
       compliment || `I came across ${business} and wanted to reach out directly.`,
       'I’m with Coalesce Digital. We work with businesses on websites, digital marketing and automation.',
       'I would be interested to hear what you are currently focused on improving.'
@@ -145,8 +140,7 @@ Record the source and date of each observation. Do not turn a guess into a probl
     body = paragraphs.filter((p, i) => p !== '' || (i > 0 && paragraphs[i - 1] !== '')).join('\n');
   } else {
     const compact = preferences.short || tone === 'DIRECT';
-    if (stage === 'IDENTIFY') body = `Hi${contact ? ` ${contact}` : ''} — I came across ${business} and wanted to check: are you the right person to speak with about the business’s website and digital presence?`;
-    else if (stage === 'ENGAGE') body = compliment
+    if (stage === 'ENGAGE') body = compliment
       ? `Hey${contact ? ` ${contact}` : ''} 👋 ${compliment} I’m with Coalesce Digital. Thought I’d connect — what are you currently focused on growing at ${business}?`
       : `Hey${contact ? ` ${contact}` : ''} 👋 Came across ${business} and wanted to connect. What are you currently focused on improving in the business?`;
     else if (stage === 'CONVERSATION') body = response
@@ -171,12 +165,12 @@ Record the source and date of each observation. Do not turn a guess into a probl
       : `Hey${contact ? ` ${contact}` : ''}, following up on our earlier conversation about ${business}. Has this moved up the priority list, or would another time be better?`;
     if (detail && !['IDENTIFY', 'ENGAGE'].includes(stage) && !body.includes(detail)) body += `\n\n${detail}`;
     if (compact && body.length > 550) body = body.slice(0, 545).trimEnd() + '…';
-    if (activeChannel === 'INSTAGRAM') {
+    if (channel === 'INSTAGRAM') {
       body = body.replace(/^Hi(?=\\s|,)/, 'Hey');
       if (body.length > 420) body = body.slice(0, 415).trimEnd() + '…';
     }
-    if (activeChannel === 'LINKEDIN') body = body.replace(/^Hey/g, 'Hi').replace(/ 👋| 😊/g, '');
-    if (activeChannel === 'WHATSAPP' && tone !== 'PROFESSIONAL' && !body.startsWith('Hey') && !body.startsWith('Hi')) {
+    if (channel === 'LINKEDIN') body = body.replace(/^Hey/g, 'Hi').replace(/ 👋| 😊/g, '');
+    if (channel === 'WHATSAPP' && tone !== 'PROFESSIONAL' && !body.startsWith('Hey') && !body.startsWith('Hi')) {
       body = `Hi${contact ? ` ${contact}` : ''}, ${body}`;
     }
     if (tone === 'PROFESSIONAL') body = body.replace(/^Hey/g, 'Hi').replace(' 👋', '');
