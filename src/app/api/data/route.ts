@@ -7,7 +7,8 @@ import {
   listRecords,
   replaceRecords,
   upsertRecords,
-  WorkspaceAuthorizationError
+  WorkspaceAuthorizationError,
+  isSameOriginRequest
 } from '@/lib/db/server';
 
 export const dynamic = 'force-dynamic';
@@ -73,6 +74,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Cross-origin request rejected.' }, { status: 403 });
   const collection = getCollection(request);
   if (!collection) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
   if (!dbConfigured) return NextResponse.json({ configured: false, error: 'Database is not connected.' }, { status: 503 });
@@ -91,6 +93,7 @@ export async function PUT(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Cross-origin request rejected.' }, { status: 403 });
   const collection = getCollection(request);
   if (!collection) return NextResponse.json({ error: 'Invalid collection.' }, { status: 400 });
   if (!dbConfigured) return NextResponse.json({ configured: false, error: 'Database is not connected.' }, { status: 503 });
