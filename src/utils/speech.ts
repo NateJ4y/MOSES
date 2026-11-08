@@ -15,7 +15,7 @@ export function isSpeechRecognitionSupported(): boolean {
 }
 
 export function startSpeechRecognition(
-  onResult: (text: string) => void,
+  onResult: (text: string, isFinal: boolean) => void,
   onEnd: () => void,
   onError: (err: string) => void
 ): boolean {
@@ -33,21 +33,16 @@ export function startSpeechRecognition(
     }
 
     recognitionInstance = new SpeechRecognitionClass();
-    recognitionInstance.continuous = false;
+    // Keep the microphone session open across pauses; users stop it manually.
+    recognitionInstance.continuous = true;
     recognitionInstance.interimResults = true;
     recognitionInstance.lang = 'en-US';
 
     recognitionInstance.onresult = (event: any) => {
-      let finalTranscript = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        } else {
-          finalTranscript += event.results[i][0].transcript;
-        }
-      }
-      if (finalTranscript) {
-        onResult(finalTranscript);
+        const result = event.results[i];
+        const transcript = result?.[0]?.transcript?.trim();
+        if (transcript) onResult(transcript, Boolean(result.isFinal));
       }
     };
 
@@ -81,7 +76,7 @@ export function stopSpeechRecognition() {
 export const speechRecognizer = {
   start: (onResult: (text: string, isFinal?: boolean) => void, onError: (err: string) => void) => {
     return startSpeechRecognition(
-      (text) => onResult(text, false),
+      (text, isFinal) => onResult(text, isFinal),
       () => {},
       onError
     );
