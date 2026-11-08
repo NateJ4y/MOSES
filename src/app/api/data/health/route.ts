@@ -1,30 +1,32 @@
-import { NextResponse } from 'next/server';
-import { dbConfigured, dbRequest, ensureWorkspaceId } from '@/lib/db/server';
+import { NextResponse } from "next/server";
+import { dbConfigured, ensureWorkspaceForUser, getAuthenticatedUser, getWorkspaceMembership, WorkspaceAuthorizationError } from "@/lib/db/server";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (!dbConfigured) {
-    return NextResponse.json({ ok: false, configured: false, error: 'Supabase server environment variables are missing.' }, { status: 503 });
-  }
-
   try {
-    const workspaceId = await ensureWorkspaceId();
-    const leads = await dbRequest(
-      'leads?select=id,business,workspace_id&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&order=created_at.desc&limit=5',
-      { method: 'GET' }
-    );
+    const user = await getAuthenticatedUser();
+    if (!user) return NextResponse.json({ ok: false, error: "Authentication required." }, { status: 401 });
+    if (!dbConfigured) return NextResponse.json({ ok: false, configured: false, error: "Database is not connected." }, { status: 503 });
+
+    const workspaceId = await ensureWorkspaceForUser(user.id);
+    const membership = await getWorkspaceMembership(user.id, workspaceId);
+    if (!membership) throw new WorkspaceAuthorizationError("You do not have access to this workspace.");
 
     return NextResponse.json({
       ok: true,
       configured: true,
-      workspaceId,
-      leadCount: Array.isArray(leads) ? leads.length : 0,
-      leads: Array.isArray(leads) ? leads : []
-    });
+      status: "CONNECTED"
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    if (error instanceof WorkspaceAuthorizationError) {
+      return NextResponse.json({ ok: false, error: error.message }, { status: 403 });
+    }
+    console.error("Database health check failed:", error);
     return NextResponse.json({
       ok: false,
-      configured: true,
-      error: error instanceof Error ? error.message : 'Unknown database error.'
+      configured: dbConfigured,
+      error: "Database health check failed."
     }, { status: 500 });
   }
 }
