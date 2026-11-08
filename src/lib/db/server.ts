@@ -8,6 +8,19 @@ export const dbConfigured = Boolean(url && key);
 
 const allowedTables = new Set(['workspaces', 'workspace_members', 'moses_records']);
 
+export function isSameOriginRequest(request: Request) {
+  const expectedOrigin = new URL(request.url).origin;
+  const origin = request.headers.get('origin');
+  if (origin) {
+    try { return new URL(origin).origin === expectedOrigin; } catch { return false; }
+  }
+  const referer = request.headers.get('referer');
+  if (referer) {
+    try { return new URL(referer).origin === expectedOrigin; } catch { return false; }
+  }
+  return false;
+}
+
 export class WorkspaceAuthorizationError extends Error {
   constructor(message: string) {
     super(message);
