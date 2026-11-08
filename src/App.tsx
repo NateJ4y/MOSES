@@ -540,7 +540,6 @@ export function App() {
             <BusinessDevView
               leads={leads}
               onUpdateLeadStatus={handleUpdateLeadStatus}
-              onUpdateLead={handleUpdateLead}
               onAddLead={handleAddLead}
               onNavigateToOutreach={handleNavigateToOutreachWithLead}
             />
