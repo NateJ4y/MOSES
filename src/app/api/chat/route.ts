@@ -1,29 +1,68 @@
 import { NextResponse } from "next/server";
 import { buildMosesContext, generateMosesResponse } from "@/lib/ai";
+import {
+  dbConfigured,
+  ensureWorkspaceForUser,
+  getAuthenticatedUser,
+  getWorkspaceMembership,
+  listRecords,
+  WorkspaceAuthorizationError
+} from "@/lib/db/server";
+
+export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const message = typeof body?.message === "string" ? body.message.trim() : "";
-    if (!message) {
-      return NextResponse.json({ error: "Message is required" }, { status: 400 });
+    const user = await getAuthenticatedUser();
+    if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    if (!dbConfigured) return NextResponse.json({ error: "Database is not connected." }, { status: 503 });
+
+    const workspaceId = await ensureWorkspaceForUser(user.id);
+    const membership = await getWorkspaceMembership(user.id, workspaceId);
+    if (!membership) throw new WorkspaceAuthorizationError("You do not have access to this workspace.");
+
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+    }
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return NextResponse.json({ error: "A valid chat payload is required." }, { status: 400 });
     }
 
-    const context = buildMosesContext(body?.context || {});
-    const result = await generateMosesResponse(message, context);
+    const payload = body as Record<string, unknown>;
+    const message = typeof payload.message === "string" ? payload.message.trim() : "";
+    if (!message) return NextResponse.json({ error: "Message is required." }, { status: 400 });
+    if (message.length > 8000) return NextResponse.json({ error: "Message must be 8,000 characters or fewer." }, { status: 413 });
 
-    return NextResponse.json(result);
+    // Never trust business records supplied by the browser. Context comes only
+    // from the authenticated user's verified workspace.
+    const [leads, projects, emails, clientDNA, messages, memory, knowledge] = await Promise.all([
+      listRecords("leads", workspaceId),
+      listRecords("projects", workspaceId),
+      listRecords("emails", workspaceId),
+      listRecords("client_dna", workspaceId),
+      listRecords("messages", workspaceId),
+      listRecords("memory", workspaceId),
+      listRecords("knowledge", workspaceId)
+    ]);
+
+    const requestedSection = typeof payload.activeSection === "string" ? payload.activeSection.slice(0, 40) : "COMMAND";
+    const context = buildMosesContext({ activeSection: requestedSection, leads, projects, emails, clientDNA, messages, memory, knowledge });
+    const result = await generateMosesResponse(message, context);
+    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
+    if (error instanceof WorkspaceAuthorizationError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
     console.error("MOSES Chat API error:", error);
-    return NextResponse.json(
-      {
-        reply: "MOSES Core could not process the command. No unverified answer was fabricated.",
-        provider: "gemini",
-        model: "gemini-3.8-flash",
-        status: "ERROR",
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      reply: "MOSES Core could not process the command. No unverified answer was fabricated.",
+      provider: "gemini",
+      model: "gemini-3.8-flash",
+      status: "ERROR",
+      timestamp: new Date().toISOString()
+    }, { status: 500 });
   }
 }
