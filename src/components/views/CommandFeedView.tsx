@@ -186,6 +186,27 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
                   </div>
                 )}
 
+                {isMoses && msg.contextDiagnostics && (
+                  <details className="mt-3 pt-2 border-t border-zinc-200 text-[10px] text-zinc-600">
+                    <summary className="cursor-pointer font-semibold uppercase tracking-wide">
+                      Workspace context · {msg.contextDiagnostics.completeness === 'complete' ? 'Complete retrieval' : 'Partial retrieval'} · {msg.contextDiagnostics.collectionCount} collections
+                    </summary>
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {Object.entries(msg.contextDiagnostics.collections).map(([name, item]) => (
+                        <div key={name} className="flex items-center justify-between gap-2 rounded-lg bg-white border border-zinc-200 px-2 py-1.5">
+                          <span className="font-medium">{name.replaceAll('_', ' ')}</span>
+                          <span className={item.status === 'unavailable' ? 'text-rose-700' : item.status === 'truncated' ? 'text-amber-700' : 'text-zinc-500'}>
+                            {item.status} · {item.count}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-zinc-500">
+                      {msg.contextDiagnostics.totalRecords} records included · {msg.contextDiagnostics.unavailableCollections} unavailable · {msg.contextDiagnostics.truncatedCollections} truncated.
+                    </p>
+                  </details>
+                )}
+
                 {/* Quick actions for Moses replies */}
                 {isMoses && (
                   <div className="flex items-center gap-3 mt-3 pt-2 border-t border-zinc-200 text-[10px] text-zinc-500">
