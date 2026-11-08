@@ -40,7 +40,9 @@ interface LeadsViewProps {
   onDeleteLead?: (leadId: string) => void;
   loadError?: string | null;
   writeError?: string | null;
+  saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
   onRetryLoad?: () => void;
+  onRetrySave?: () => void;
 }
 
 export function LeadsView({
@@ -52,7 +54,9 @@ export function LeadsView({
   onDeleteLead,
   loadError,
   writeError,
-  onRetryLoad
+  saveStatus = 'idle',
+  onRetryLoad,
+  onRetrySave
 }: LeadsViewProps) {
   const [filterTier, setFilterTier] = useState<string>('ALL');
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
@@ -61,6 +65,7 @@ export function LeadsView({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [selectedDossierLead, setSelectedDossierLead] = useState<Lead | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState<boolean>(false);
+  const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
 
   // New Lead Form State
   const [newLead, setNewLead] = useState<Partial<Lead>>({
@@ -86,16 +91,14 @@ export function LeadsView({
       lead.scoreTier === filterTier || 
       (filterTier === 'CAPACITY_RISK' && lead.capacityRisk);
     const matchesStatus = filterStatus === 'ALL' || lead.status === filterStatus;
-    const q = searchQuery.toLowerCase();
-    const matchesQuery = 
-      (lead.business || '').toLowerCase().includes(q) ||
-      (lead.contactPerson || '').toLowerCase().includes(q) ||
-      (lead.email || '').toLowerCase().includes(q) ||
-      (lead.phone || '').toLowerCase().includes(q) ||
-      (lead.website || '').toLowerCase().includes(q) ||
-      (lead.industry || '').toLowerCase().includes(q) ||
-      (lead.problem || '').toLowerCase().includes(q) ||
-      (lead.potentialService || '').toLowerCase().includes(q);
+    const q = searchQuery.trim().toLocaleLowerCase();
+    const searchable = [
+      lead.business, lead.contactPerson, lead.contactRole, lead.email, lead.phone,
+      lead.website, lead.social, lead.industry, lead.location, lead.problem,
+      lead.potentialService, lead.status, lead.scoreTier, lead.nextAction,
+      ...(Array.isArray(lead.signals) ? lead.signals : [])
+    ].filter((value): value is string => typeof value === 'string').join(' ').toLocaleLowerCase();
+    const matchesQuery = !q || searchable.includes(q);
     return matchesTier && matchesStatus && matchesQuery;
   });
 
@@ -278,7 +281,9 @@ export function LeadsView({
       </div>
 
       {loadError && <div role="alert" className="p-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs flex items-center justify-between gap-3"><span><strong>Lead records could not be loaded.</strong> {loadError} No empty replacement has been saved.</span><button type="button" onClick={onRetryLoad} className="underline font-bold shrink-0">Retry</button></div>}
-      {writeError && <div role="alert" className="p-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs"><strong>Lead changes may not be saved.</strong> {writeError} Check the connection before relying on these changes.</div>}
+      {writeError && <div role="alert" className="p-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs flex flex-wrap items-center justify-between gap-3"><span><strong>NOT SAVED TO SUPABASE.</strong> {writeError} Changes shown here are unconfirmed and will not be treated as saved.</span><div className="flex gap-3 shrink-0"><button type="button" onClick={onRetrySave} className="underline font-bold">Retry save</button><button type="button" onClick={onRetryLoad} className="underline font-bold">Discard local changes / reload database</button></div></div>}
+      {!writeError && saveStatus === 'saving' && <p role="status" className="text-[11px] text-amber-700">Saving lead changes to Supabase…</p>}
+      {!writeError && saveStatus === 'saved' && <p role="status" className="text-[11px] text-emerald-700">Lead records synced with Supabase.</p>}
 
       {/* Leads Cards Grid */}
       {filteredLeads.length > 0 ? (
@@ -296,7 +301,7 @@ export function LeadsView({
                   : 'border-zinc-200 hover:border-zinc-300'
               }`}
             >
-              <div className="space-y-3.5">
+              <div className="space-y-3">
                 {/* Header & Status */}
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
@@ -305,7 +310,7 @@ export function LeadsView({
                     </h3>
                     <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 mt-0.5">
                       <MapPin size={11} strokeWidth={1.5} className="shrink-0 text-zinc-400" />
-                      <span className="truncate">{lead.location}</span>
+                      <span className="truncate">{lead.location || 'Location not recorded'}</span>
                     </div>
                   </div>
 
@@ -327,6 +332,7 @@ export function LeadsView({
                   </div>
                 )}
 
+                {expandedLeadId === lead.id && <>
                 {/* Contact Dossier Section (Luxury Minimal White Card) */}
                 <div className="rounded-xl bg-zinc-50 border border-zinc-200 p-3.5 space-y-2.5">
                   <div className="flex items-center justify-between border-b border-zinc-200 pb-2">
@@ -451,7 +457,7 @@ export function LeadsView({
                   <div className="pt-2 border-t border-zinc-200 flex items-center justify-between gap-2">
                     <span className="text-[9px] text-zinc-400 font-bold uppercase tracking-wider">CHANNELS:</span>
                     <div className="flex items-center gap-1.5">
-                      {lead.socialLinks?.instagram || lead.social.toLowerCase().includes('ig') || lead.social.includes('@') ? (
+                      {lead.socialLinks?.instagram || (lead.social || '').toLowerCase().includes('ig') || (lead.social || '').includes('@') ? (
                         <a
                           href={lead.socialLinks?.instagram || `https://instagram.com/${lead.social.replace(/[^a-zA-Z0-9_.]/g, '')}`}
                           target="_blank"
@@ -463,7 +469,7 @@ export function LeadsView({
                         </a>
                       ) : null}
 
-                      {lead.socialLinks?.linkedin || lead.social.toLowerCase().includes('linkedin') ? (
+                      {lead.socialLinks?.linkedin || (lead.social || '').toLowerCase().includes('linkedin') ? (
                         <a
                           href={lead.socialLinks?.linkedin || 'https://linkedin.com'}
                           target="_blank"
@@ -512,25 +518,26 @@ export function LeadsView({
                     <span className="text-[9px] text-zinc-400 uppercase block mb-0.5 font-bold tracking-wider">
                       PRIMARY BOTTLENECK
                     </span>
-                    <p className="text-zinc-700 text-[11px] leading-relaxed">{lead.problem}</p>
+                    <p className="text-zinc-700 text-[11px] leading-relaxed">{lead.problem || 'No verified bottleneck recorded.'}</p>
                   </div>
 
                   <div className="p-2.5 rounded-xl bg-zinc-50 border border-zinc-200">
                     <span className="text-[9px] text-zinc-900 uppercase block mb-0.5 font-bold tracking-wider">
                       COALESCE SOLUTION
                     </span>
-                    <p className="text-zinc-900 text-[11px] font-semibold leading-relaxed">{lead.potentialService}</p>
+                    <p className="text-zinc-900 text-[11px] font-semibold leading-relaxed">{lead.potentialService || 'No service recommendation recorded.'}</p>
                   </div>
                 </div>
 
                 {/* Signals */}
                 <div className="flex flex-wrap gap-1.5">
-                  {lead.signals.map((sig, i) => (
+                  {(Array.isArray(lead.signals) ? lead.signals : []).map((sig, i) => (
                     <span key={i} className="px-2.5 py-0.5 rounded-full bg-zinc-100 text-[9px] text-zinc-600 border border-zinc-200 font-medium">
                       {sig}
                     </span>
                   ))}
                 </div>
+                </>}
               </div>
 
               {/* Card Footer */}
@@ -541,6 +548,15 @@ export function LeadsView({
                 </div>
 
                 <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedLeadId(current => current === lead.id ? null : lead.id)}
+                    className="px-2.5 py-1.5 rounded-full border border-zinc-200 text-[10px] font-semibold text-zinc-600 hover:text-black hover:bg-zinc-100"
+                    aria-expanded={expandedLeadId === lead.id}
+                    aria-label={expandedLeadId === lead.id ? 'Collapse ' + lead.business : 'Expand ' + lead.business}
+                  >
+                    {expandedLeadId === lead.id ? 'Less' : 'Details'}
+                  </button>
                   <button
                     type="button"
                     onClick={() => handleEditLead(lead)}
