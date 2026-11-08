@@ -155,7 +155,7 @@ Record the source and date of each observation. Do not turn a guess into a probl
     else if (stage === 'PROBLEM_ID') body = response
       ? `${responseLead} ${responseAware} I want to make sure I understand properly — what has been the biggest challenge with that, and how is it affecting the business?`
       : verifiedProblem
-        ? `You mentioned ${verifiedProblem}. How is that affecting ${business} day-to-day, and what have you tried so far?`
+        ? `The issue identified is ${verifiedProblem}. How is that affecting ${business} day-to-day, and what have you tried so far?`
         : `I don’t want to assume where the problem is. What is the biggest challenge you’re facing with your website, marketing or customer enquiries at the moment?`;
     else if (stage === 'CONNECT') body = response
       ? `${responseLead} Based on what you’ve shared, ${serviceLine.toLowerCase()} Would it be useful if I explained how that could address the issue?`
@@ -171,6 +171,14 @@ Record the source and date of each observation. Do not turn a guess into a probl
       : `Hey${contact ? ` ${contact}` : ''}, following up on our earlier conversation about ${business}. Has this moved up the priority list, or would another time be better?`;
     if (detail && !['IDENTIFY', 'ENGAGE'].includes(stage) && !body.includes(detail)) body += `\n\n${detail}`;
     if (compact && body.length > 550) body = body.slice(0, 545).trimEnd() + '…';
+    if (activeChannel === 'INSTAGRAM') {
+      body = body.replace(/^Hi(?=\\s|,)/, 'Hey');
+      if (body.length > 420) body = body.slice(0, 415).trimEnd() + '…';
+    }
+    if (activeChannel === 'LINKEDIN') body = body.replace(/^Hey/g, 'Hi').replace(/ 👋| 😊/g, '');
+    if (activeChannel === 'WHATSAPP' && tone !== 'PROFESSIONAL' && !body.startsWith('Hey') && !body.startsWith('Hi')) {
+      body = `Hi${contact ? ` ${contact}` : ''}, ${body}`;
+    }
     if (tone === 'PROFESSIONAL') body = body.replace(/^Hey/g, 'Hi').replace(' 👋', '');
     if (tone === 'FRIENDLY' && !body.includes('😊') && body.length < 400) body += ' 😊';
     if (tone === 'NATURAL') body = body.replace(/\s{2,}/g, ' ');
