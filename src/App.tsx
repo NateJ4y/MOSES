@@ -4,14 +4,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 
 const persistenceQueues = new Map<string, Promise<void>>();
 import { NavSection, Lead, StrategicWarning, ChatMessage, LeadStatus, DigitalOpsProject, EmailMessage, ClientDNA } from './types';
-import { 
-  INITIAL_LEADS, 
-  INITIAL_WARNINGS, 
-  INITIAL_MESSAGES,
-  INITIAL_PROJECTS,
-  INITIAL_EMAILS,
-  
-} from './data/initialData';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { RightIntelligencePanel } from './components/RightIntelligencePanel';
@@ -41,11 +33,11 @@ import { speechRecognizer, speakText } from './utils/speech';
 export function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('COMMAND');
   const [isHomeMode, setIsHomeMode] = useState<boolean>(true);
-  const [leads, setLeads] = useState<Lead[]>(INITIAL_LEADS);
-  const [warnings, setWarnings] = useState<StrategicWarning[]>(INITIAL_WARNINGS);
-  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
-  const [projects, setProjects] = useState<DigitalOpsProject[]>(INITIAL_PROJECTS);
-  const [emails, setEmails] = useState<EmailMessage[]>(INITIAL_EMAILS);
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [warnings, setWarnings] = useState<StrategicWarning[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [projects, setProjects] = useState<DigitalOpsProject[]>([]);
+  const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [clientDNA, setClientDNA] = useState<ClientDNA[]>([]);
   const [outreachTargetLead, setOutreachTargetLead] = useState<Lead | null>(null);
 
@@ -64,6 +56,7 @@ export function App() {
   const [hydratedCollections, setHydratedCollections] = useState<Set<string>>(new Set());
   const [leadLoadError, setLeadLoadError] = useState<string | null>(null);
   const [leadWriteError, setLeadWriteError] = useState<string | null>(null);
+  const [leadSaveStatus, setLeadSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isBooting, setIsBooting] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
 
@@ -91,6 +84,7 @@ export function App() {
     const previous = persistenceQueues.get(key) ?? Promise.resolve();
     const next = previous.then(async () => {
       try {
+        if (collection === 'leads') setLeadSaveStatus('saving');
         const response = await fetch('/api/data?collection=' + collection, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -100,11 +94,11 @@ export function App() {
           const body = await response.json().catch(() => ({}));
           throw new Error(body?.error || `Database write failed (${response.status}).`);
         }
-        if (collection === 'leads') setLeadWriteError(null);
+        if (collection === 'leads') { setLeadWriteError(null); setLeadSaveStatus('saved'); }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Database write failed.';
         console.error('MOSES database write failed:', error);
-        if (collection === 'leads') setLeadWriteError(message);
+        if (collection === 'leads') { setLeadWriteError(message); setLeadSaveStatus('error'); }
       }
     });
     persistenceQueues.set(key, next);
@@ -545,7 +539,9 @@ export function App() {
               onDeleteLead={handleDeleteLead}
               loadError={leadLoadError}
               writeError={leadWriteError}
+              saveStatus={leadSaveStatus}
               onRetryLoad={() => window.location.reload()}
+              onRetrySave={() => { setLeadSaveStatus('saving'); void persist('moses.leads.v1', leads); }}
             />
           )}
 
