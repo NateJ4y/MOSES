@@ -6,12 +6,14 @@ import {
   getAuthenticatedUser,
   getWorkspaceMembership,
   listRecords,
-  WorkspaceAuthorizationError
+  WorkspaceAuthorizationError,
+  isSameOriginRequest
 } from "@/lib/db/server";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  if (!isSameOriginRequest(req)) return NextResponse.json({ error: 'Cross-origin request rejected.' }, { status: 403 });
   try {
     const user = await getAuthenticatedUser();
     if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
