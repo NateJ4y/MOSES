@@ -1,4 +1,3 @@
-import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { createClient as createSupabaseServerClient } from '@/lib/supabase/server';
 
