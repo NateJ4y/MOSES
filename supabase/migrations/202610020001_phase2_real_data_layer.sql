@@ -4,9 +4,28 @@
 
 create extension if not exists pgcrypto;
 
-create type moses_record_status as enum ('ACTIVE','ARCHIVED','DELETED');
-create type moses_source_type as enum ('USER','SYSTEM','IMPORT','API','WEBHOOK','AI','UNKNOWN');
-create type moses_data_quality as enum ('REAL','UNKNOWN','INFERENCE','STALE');
+-- Keep this migration safe to re-run in projects where some enum types
+-- were already created by an earlier/manual application of the schema.
+do $
+begin
+  create type public.moses_record_status as enum ('ACTIVE','ARCHIVED','DELETED');
+exception
+  when duplicate_object then null;
+end $;
+
+do $
+begin
+  create type public.moses_source_type as enum ('USER','SYSTEM','IMPORT','API','WEBHOOK','AI','UNKNOWN');
+exception
+  when duplicate_object then null;
+end $;
+
+do $
+begin
+  create type public.moses_data_quality as enum ('REAL','UNKNOWN','INFERENCE','STALE');
+exception
+  when duplicate_object then null;
+end $;
 
 create table if not exists workspaces (
   id uuid primary key default gen_random_uuid(),
