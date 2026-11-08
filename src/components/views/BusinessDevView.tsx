@@ -73,7 +73,7 @@ export const BusinessDevView: React.FC<BusinessDevViewProps> = ({
   const [newPhone, setNewPhone] = useState('');
   const [newIndustry, setNewIndustry] = useState('');
   const [newProblem, setNewProblem] = useState('');
-  const [newPotentialService, setNewPotentialService] = useState('Websites / Web Development');
+  const [newPotentialService, setNewPotentialService] = useState('');
   const [newLocation, setNewLocation] = useState('');
   const [newWebsite, setNewWebsite] = useState('');
   const [newSocial, setNewSocial] = useState('');
@@ -126,7 +126,7 @@ export const BusinessDevView: React.FC<BusinessDevViewProps> = ({
       scoreTier: 'UNSCORED',
       status: 'NEW',
       estimatedValue: 0,
-      nextAction: 'Verify prospect details and conduct discovery.',
+      nextAction: 'Not recorded',
       lastContact: '',
       followUpDate: '',
       scoreExplanation: 'Not scored as buying intent. Evidence readiness is calculated from the recorded fields.',
@@ -312,7 +312,7 @@ export const BusinessDevView: React.FC<BusinessDevViewProps> = ({
             </div>
             <label className="block">Social profile<input value={newSocial} onChange={e => setNewSocial(e.target.value)} className="mt-1 w-full p-2.5 rounded-xl bg-zinc-50 border border-zinc-200" /></label>
             <label className="block">Observed business problem / opportunity<textarea rows={3} value={newProblem} onChange={e => setNewProblem(e.target.value)} placeholder="Record what you have actually observed or what the prospect told you." className="mt-1 w-full p-2.5 rounded-xl bg-zinc-50 border border-zinc-200" /></label>
-            <label className="block">Potential service<select value={newPotentialService} onChange={e => setNewPotentialService(e.target.value)} className="mt-1 w-full p-2.5 rounded-xl bg-zinc-50 border border-zinc-200"><option>Websites / Web Development</option><option>Automation & AI</option><option>Social Media Management</option><option>Graphic Design / Branding</option></select></label>
+            <label className="block">Potential service<select value={newPotentialService} onChange={e => setNewPotentialService(e.target.value)} className="mt-1 w-full p-2.5 rounded-xl bg-zinc-50 border border-zinc-200"><option value="">Not assessed yet</option><option>Websites / Web Development</option><option>Automation & AI</option><option>Social Media Management</option><option>Graphic Design / Branding</option></select></label>
             <p className="text-[10px] text-zinc-500">The score only reflects the fields recorded here; it does not estimate willingness to buy.</p>
             <div className="flex justify-end gap-2 pt-3 border-t border-zinc-200"><button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 rounded-full bg-zinc-100">Cancel</button><button type="submit" className="px-5 py-2 rounded-full bg-black text-white font-semibold">Save prospect</button></div>
           </form>
