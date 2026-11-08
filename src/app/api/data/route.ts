@@ -1,5 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dbConfigured, ensureWorkspaceForUser, getAuthenticatedUser, listRecords, replaceRecords, upsertRecords } from '@/lib/db/server';
+import {
+  dbConfigured,
+  ensureWorkspaceForUser,
+  getAuthenticatedUser,
+  getWorkspaceMembership,
+  listRecords,
+  replaceRecords,
+  upsertRecords,
+  WorkspaceAuthorizationError
+} from '@/lib/db/server';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,15 +26,34 @@ function getCollection(request: NextRequest) {
 
 async function authenticatedWorkspace() {
   const user = await getAuthenticatedUser();
-  if (!user) return { user: null, workspaceId: null as string | null };
+  if (!user) return { user: null, workspaceId: null, role: null };
+
   const workspaceId = await ensureWorkspaceForUser(user.id);
-  return { user, workspaceId };
+  const membership = await getWorkspaceMembership(user.id, workspaceId);
+  if (!membership) {
+    throw new WorkspaceAuthorizationError('You do not have an active membership in this MOSES workspace.');
+  }
+
+  return { user, workspaceId, role: membership.role };
 }
 
 function recordsFromBody(body: unknown): unknown[] {
   if (Array.isArray(body)) return body;
   if (body && typeof body === 'object') return [body];
   throw new Error('Request body must be a record or an array of records.');
+}
+
+function workspaceErrorResponse(error: unknown, fallback: string) {
+  if (error instanceof WorkspaceAuthorizationError) {
+    return NextResponse.json({ error: error.message }, { status: 403 });
+  }
+  return NextResponse.json({
+    error: error instanceof Error ? error.message : fallback
+  }, { status: 500 });
+}
+
+function canWrite(role: string | null) {
+  return role === 'OWNER' || role === 'ADMIN' || role === 'MEMBER';
 }
 
 export async function GET(request: NextRequest) {
@@ -40,9 +68,7 @@ export async function GET(request: NextRequest) {
     if (!user || !workspaceId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
     return NextResponse.json({ configured: true, records: await listRecords(collection, workspaceId) });
   } catch (error) {
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Database read failed.'
-    }, { status: 500 });
+    return workspaceErrorResponse(error, 'Database read failed.');
   }
 }
 
@@ -52,15 +78,15 @@ export async function PUT(request: NextRequest) {
   if (!dbConfigured) return NextResponse.json({ configured: false, error: 'Database is not connected.' }, { status: 503 });
 
   try {
-    const { user, workspaceId } = await authenticatedWorkspace();
+    const { user, workspaceId, role } = await authenticatedWorkspace();
     if (!user || !workspaceId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    if (!canWrite(role)) return NextResponse.json({ error: 'Your workspace role does not allow changes.' }, { status: 403 });
+
     const records = recordsFromBody(await request.json());
     const result = await replaceRecords(collection, workspaceId, records);
     return NextResponse.json({ configured: true, result });
   } catch (error) {
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Database replacement failed.'
-    }, { status: 500 });
+    return workspaceErrorResponse(error, 'Database replacement failed.');
   }
 }
 
@@ -70,14 +96,14 @@ export async function POST(request: NextRequest) {
   if (!dbConfigured) return NextResponse.json({ configured: false, error: 'Database is not connected.' }, { status: 503 });
 
   try {
-    const { user, workspaceId } = await authenticatedWorkspace();
+    const { user, workspaceId, role } = await authenticatedWorkspace();
     if (!user || !workspaceId) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
+    if (!canWrite(role)) return NextResponse.json({ error: 'Your workspace role does not allow changes.' }, { status: 403 });
+
     const records = recordsFromBody(await request.json());
     const result = await upsertRecords(collection, workspaceId, records);
     return NextResponse.json({ configured: true, result });
   } catch (error) {
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : 'Database write failed.'
-    }, { status: 500 });
+    return workspaceErrorResponse(error, 'Database write failed.');
   }
 }
