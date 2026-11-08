@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Send, Instagram, Mail, Linkedin, MessageSquare, Sparkles, Copy, Check,
   ChevronDown, ChevronUp, ShieldCheck, Target, ClipboardList, AlertCircle,
-  ArrowRight, RefreshCw, UserRound, MessageCircle, CheckCircle2
+  UserRound, MessageCircle, CheckCircle2
 } from 'lucide-react';
 import { Lead } from '../../types';
 import { playCyberSound } from '../../utils/audio';
@@ -144,14 +144,14 @@ function createDraft(args: {
     else if (stage === 'PROBLEM_ID') body = response
       ? `${responseLead} ${responseAware} I want to make sure I understand properly — what has been the biggest challenge with that, and how is it affecting the business?`
       : verifiedProblem
-        ? `You mentioned ${verifiedProblem}. How is that affecting ${business day-to-day, and what have you tried so far?`
+        ? `You mentioned ${verifiedProblem}. How is that affecting ${business} day-to-day, and what have you tried so far?`
         : `I don’t want to assume where the problem is. What is the biggest challenge you’re facing with your website, marketing or customer enquiries at the moment?`;
     else if (stage === 'CONNECT') body = response
       ? `${responseLead} Based on what you’ve shared, ${serviceLine.toLowerCase()} Would it be useful if I explained how that could address the issue?`
       : `From what you’ve described, there may be a fit for ${service || 'one of our digital services'}. Is improving this something you’re actively looking at?`;
     else if (stage === 'OFFER') body = preview
       ? `Based on what we discussed, I can share this next step: ${preview}. Would you like me to send it through?`
-      : `Would it help if I put together a short outline / concept for ${business, based on what you told me? I’ll confirm the scope before preparing it. ${softExit}`;
+      : `Would it help if I put together a short outline / concept for ${business}, based on what you told me? I’ll confirm the scope before preparing it. ${softExit}`;
     else if (stage === 'CLOSE') body = response
       ? `${responseLead} Just so we can move this forward clearly: are you comfortable with the proposed direction, or is there anything you’d like me to clarify before we agree on the next step?`
       : `If the approach makes sense, the next step is to confirm the scope, timing and who needs to approve it. What would you need from me to make a decision?`;
