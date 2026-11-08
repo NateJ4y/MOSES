@@ -1,4 +1,4 @@
-export type MosesProvider = 'gemini';
+export type MosesProvider = 'groq';
 
 export const MOSES_COLLECTION_NAMES = [
   'companies',
