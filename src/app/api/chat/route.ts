@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildMosesContext, generateMosesResponse } from "@/lib/ai";
+import { buildMosesContext, generateMosesResponse, MOSES_COLLECTION_NAMES } from "@/lib/ai";
 import {
   dbConfigured,
   ensureWorkspaceForUser,
@@ -38,20 +38,23 @@ export async function POST(req: Request) {
     if (!message) return NextResponse.json({ error: "Message is required." }, { status: 400 });
     if (message.length > 8000) return NextResponse.json({ error: "Message must be 8,000 characters or fewer." }, { status: 413 });
 
-    // Never trust business records supplied by the browser. Context comes only
-    // from the authenticated user's verified workspace.
-    const [leads, projects, emails, clientDNA, messages, memory, knowledge] = await Promise.all([
-      listRecords("leads", workspaceId),
-      listRecords("projects", workspaceId),
-      listRecords("emails", workspaceId),
-      listRecords("client_dna", workspaceId),
-      listRecords("messages", workspaceId),
-      listRecords("memory", workspaceId),
-      listRecords("knowledge", workspaceId)
-    ]);
+    // Never trust business records supplied by the browser. Retrieve every
+    // approved collection from the authenticated workspace on the server.
+    // A failed read remains explicitly unavailable; it is never represented as empty.
+    const collectionReads = await Promise.allSettled(
+      MOSES_COLLECTION_NAMES.map((collection) => listRecords(collection, workspaceId, 101))
+    );
+    const collections = Object.fromEntries(
+      MOSES_COLLECTION_NAMES.map((collection, index) => {
+        const result = collectionReads[index];
+        return [collection, result.status === "fulfilled"
+          ? { records: result.value }
+          : { error: true }];
+      })
+    );
 
     const requestedSection = typeof payload.activeSection === "string" ? payload.activeSection.slice(0, 40) : "COMMAND";
-    const context = buildMosesContext({ activeSection: requestedSection, leads, projects, emails, clientDNA, messages, memory, knowledge });
+    const context = buildMosesContext({ activeSection: requestedSection, collections });
     const result = await generateMosesResponse(message, context);
     return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
