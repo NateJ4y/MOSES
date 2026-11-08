@@ -1,3 +1,4 @@
+import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { createClient as createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -83,19 +84,6 @@ export async function replaceRecords(collection: string, workspaceId: string, re
     })
   });
   return response ?? [];
-}
-
-export async function ensureWorkspaceId() {
-  if (process.env.MOSES_WORKSPACE_ID) return process.env.MOSES_WORKSPACE_ID;
-  const rows = await dbRequest('workspaces?select=id&order=created_at.asc&limit=1', { method: 'GET' });
-  if (Array.isArray(rows) && rows[0]?.id) return rows[0].id as string;
-  const created = await dbRequest('workspaces', {
-    method: 'POST',
-    headers: { Prefer: 'return=representation' },
-    body: JSON.stringify({ name: 'Coalesce Digital' })
-  });
-  if (Array.isArray(created) && created[0]?.id) return created[0].id as string;
-  throw new Error('Could not initialize MOSES workspace.');
 }
 
 export async function getAuthenticatedUser() {
