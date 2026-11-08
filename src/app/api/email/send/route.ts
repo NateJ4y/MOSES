@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { dbConfigured, ensureWorkspaceForUser, getWorkspaceMembership, WorkspaceAuthorizationError } from '@/lib/db/server';
+import { dbConfigured, ensureWorkspaceForUser, getWorkspaceMembership, WorkspaceAuthorizationError, isSameOriginRequest } from '@/lib/db/server';
 
 export const runtime = 'nodejs';
 
@@ -9,6 +9,7 @@ function validEmail(value: unknown): value is string {
 }
 
 export async function POST(request: NextRequest) {
+  if (!isSameOriginRequest(request)) return NextResponse.json({ error: 'Cross-origin request rejected.' }, { status: 403 });
   const supabase = await createClient();
   const { data: { user }, error: authError } = await supabase.auth.getUser();
 
