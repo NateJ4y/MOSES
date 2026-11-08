@@ -87,7 +87,7 @@ Record the source and date of each observation. Do not turn a guess into a probl
     ? (tone === 'DIRECT' ? 'Thanks for getting back to me.' : 'Thanks for the reply.')
     : '';
   const responseAware = response ? `You mentioned: “${response.slice(0, 220)}”.` : '';
-  const problemLine = verifiedProblem ? `You mentioned that ${verifiedProblem}.` : '';
+  const problemLine = verifiedProblem ? `The issue identified is: ${verifiedProblem}.` : '';
   const serviceLine = service ? `One area we work in is ${service}.` : 'We help businesses improve their digital presence and business systems.';
   const softExit = lowPressure ? 'No pressure either way.' : 'If it is relevant, we can take it from there.';
   const opening = tone === 'PROFESSIONAL' ? greeting : tone === 'DIRECT' ? (contact ? `Hi ${contact},` : 'Hi,') : greeting;
