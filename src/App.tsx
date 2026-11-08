@@ -57,6 +57,8 @@ export function App() {
   const [leadLoadError, setLeadLoadError] = useState<string | null>(null);
   const [leadWriteError, setLeadWriteError] = useState<string | null>(null);
   const [leadSaveStatus, setLeadSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [projectWriteError, setProjectWriteError] = useState<string | null>(null);
+  const [projectSaveStatus, setProjectSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [isBooting, setIsBooting] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
 
@@ -85,6 +87,7 @@ export function App() {
     const next = previous.then(async () => {
       try {
         if (collection === 'leads') setLeadSaveStatus('saving');
+        if (collection === 'projects') setProjectSaveStatus('saving');
         const response = await fetch('/api/data?collection=' + collection, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -95,10 +98,12 @@ export function App() {
           throw new Error(body?.error || `Database write failed (${response.status}).`);
         }
         if (collection === 'leads') { setLeadWriteError(null); setLeadSaveStatus('saved'); }
+        if (collection === 'projects') { setProjectWriteError(null); setProjectSaveStatus('saved'); }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Database write failed.';
         console.error('MOSES database write failed:', error);
         if (collection === 'leads') { setLeadWriteError(message); setLeadSaveStatus('error'); }
+        if (collection === 'projects') { setProjectWriteError(message); setProjectSaveStatus('error'); }
       }
     });
     persistenceQueues.set(key, next);
@@ -401,6 +406,17 @@ export function App() {
 
   const handleAddProject = (project: DigitalOpsProject) => {
     setProjects(prev => [project, ...prev]);
+    setProjectWriteError(null);
+  };
+
+  const handleUpdateProject = (project: DigitalOpsProject) => {
+    setProjects(prev => prev.map(item => item.id === project.id ? project : item));
+    setProjectWriteError(null);
+  };
+
+  const handleDeleteProject = (projectId: string) => {
+    setProjects(prev => prev.filter(item => item.id !== projectId));
+    setProjectWriteError(null);
   };
 
   const handleNavigateToOutreachWithLead = (lead: Lead) => {
@@ -574,6 +590,12 @@ export function App() {
             <DigitalOpsView 
               projects={projects}
               onAddProject={handleAddProject}
+              onUpdateProject={handleUpdateProject}
+              onDeleteProject={handleDeleteProject}
+              writeError={projectWriteError}
+              saveStatus={projectSaveStatus}
+              onRetrySave={() => { setProjectSaveStatus('saving'); void persist('moses.projects.v1', projects); }}
+              onReload={() => window.location.reload()}
             />
           )}
 
