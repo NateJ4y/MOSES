@@ -198,6 +198,21 @@ export interface ChatMessage {
   text: string;
   timestamp: string;
   intent?: string;
+  contextDiagnostics?: {
+    completeness: 'complete' | 'partial';
+    collectionCount: number;
+    loadedCollections: number;
+    emptyCollections: number;
+    unavailableCollections: number;
+    truncatedCollections: number;
+    totalRecords: number;
+    collections: Record<string, {
+      status: 'loaded' | 'empty' | 'unavailable' | 'truncated';
+      count: number;
+      fetchedCount: number;
+      truncated: boolean;
+    }>;
+  };
   structuredResponse?: {
     analysis?: string;
     plan?: string[];
