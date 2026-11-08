@@ -137,7 +137,7 @@ export interface DigitalOpsProject {
   progress: number;
   deadline: string;
   monthlyRetainer?: number;
-  tasks: { id: string; title: string; completed: boolean }[];
+  tasks: { id: string; title: string; completed: boolean; dueDate?: string; notes?: string }[];
   assetsCount: number;
   notes: string;
   nextAction: string;
