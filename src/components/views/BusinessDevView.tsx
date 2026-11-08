@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   TrendingUp, Users, Plus, Globe, Instagram, Sparkles, ExternalLink,
-  Send, Mail, Phone, Clock, X, ChevronDown, ChevronUp, CalendarDays,
-  AlertTriangle, CheckCircle2, CircleHelp, Target, FileText
+  Send, Mail, Phone, X, ChevronDown, ChevronUp, CalendarDays, Target, FileText
 } from 'lucide-react';
 import { Lead, LeadStatus } from '../../types';
 import { playCyberSound } from '../../utils/audio';
@@ -10,7 +9,6 @@ import { playCyberSound } from '../../utils/audio';
 interface BusinessDevViewProps {
   leads: Lead[];
   onUpdateLeadStatus: (leadId: string, newStatus: LeadStatus) => void;
-  onUpdateLead: (lead: Lead) => void;
   onAddLead: (newLead: Lead) => void;
   onNavigateToOutreach: (lead: Lead) => void;
 }
@@ -61,7 +59,6 @@ function followUpState(value?: string) {
 export const BusinessDevView: React.FC<BusinessDevViewProps> = ({
   leads,
   onUpdateLeadStatus,
-  onUpdateLead,
   onAddLead,
   onNavigateToOutreach
 }) => {
@@ -316,7 +313,7 @@ export const BusinessDevView: React.FC<BusinessDevViewProps> = ({
             <label className="block">Social profile<input value={newSocial} onChange={e => setNewSocial(e.target.value)} className="mt-1 w-full p-2.5 rounded-xl bg-zinc-50 border border-zinc-200" /></label>
             <label className="block">Observed business problem / opportunity<textarea rows={3} value={newProblem} onChange={e => setNewProblem(e.target.value)} placeholder="Record what you have actually observed or what the prospect told you." className="mt-1 w-full p-2.5 rounded-xl bg-zinc-50 border border-zinc-200" /></label>
             <label className="block">Potential service<select value={newPotentialService} onChange={e => setNewPotentialService(e.target.value)} className="mt-1 w-full p-2.5 rounded-xl bg-zinc-50 border border-zinc-200"><option>Websites / Web Development</option><option>Automation & AI</option><option>Social Media Management</option><option>Graphic Design / Branding</option></select></label>
-            <p className="text-[10px] text-zinc-500">New prospects start at zero evidence points. The score updates as you record verifiable details; it does not estimate their willingness to buy.</p>
+            <p className="text-[10px] text-zinc-500">The score only reflects the fields recorded here; it does not estimate willingness to buy.</p>
             <div className="flex justify-end gap-2 pt-3 border-t border-zinc-200"><button type="button" onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 rounded-full bg-zinc-100">Cancel</button><button type="submit" className="px-5 py-2 rounded-full bg-black text-white font-semibold">Save prospect</button></div>
           </form>
         </div>
