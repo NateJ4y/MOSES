@@ -291,25 +291,7 @@ export function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: promptText,
-          context: {
-            activeSection,
-            leads,
-            projects,
-            emails,
-            clientDNA,
-            messages: [...messages, newUserMsg],
-            // Business memory and knowledge are empty until verified records are connected.
-            memory: [],
-            knowledge: [],
-            system: {
-              leadCount: leads.length,
-              projectCount: projects.length,
-              emailCount: emails.length,
-              clientDNACount: clientDNA.length,
-              memoryCount: 0,
-              knowledgeCount: 0
-            }
-          }
+          activeSection
         })
       });
 
@@ -325,7 +307,8 @@ export function App() {
         text: data.reply || "Got it, skeem. Analyzing the data and preparing the next move.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         intent: data.intent,
-        structuredResponse: data.structuredResponse
+        structuredResponse: data.structuredResponse,
+        contextDiagnostics: data.contextDiagnostics
       };
 
       setMessages(prev => [...prev, mosesMsg]);
