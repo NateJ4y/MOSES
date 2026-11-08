@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { dbConfigured, ensureWorkspaceForUser, getWorkspaceMembership, WorkspaceAuthorizationError } from '@/lib/db/server';
 
 export const runtime = 'nodejs';
 
@@ -14,10 +15,26 @@ export async function POST(request: NextRequest) {
   if (authError || !user) {
     return NextResponse.json({ error: 'You must be signed in to send email.' }, { status: 401 });
   }
+  if (!dbConfigured) {
+    return NextResponse.json({ error: 'Workspace authorization is unavailable because the database is not connected.' }, { status: 503 });
+  }
+
+  try {
+    const workspaceId = await ensureWorkspaceForUser(user.id);
+    const membership = await getWorkspaceMembership(user.id, workspaceId);
+    if (!membership) throw new WorkspaceAuthorizationError('You do not have access to this workspace.');
+    if (!['OWNER', 'ADMIN', 'MEMBER'].includes(membership.role)) {
+      return NextResponse.json({ error: 'Your workspace role does not allow outbound email.' }, { status: 403 });
+    }
+  } catch (error) {
+    if (error instanceof WorkspaceAuthorizationError) {
+      return NextResponse.json({ error: error.message }, { status: 403 });
+    }
+    return NextResponse.json({ error: 'Could not verify workspace authorization.' }, { status: 500 });
+  }
 
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.RESEND_FROM_EMAIL;
-
   if (!apiKey || !from) {
     return NextResponse.json({
       error: 'Outbound email is not configured yet. Set RESEND_API_KEY and RESEND_FROM_EMAIL in Vercel, then redeploy.',
@@ -26,13 +43,10 @@ export async function POST(request: NextRequest) {
   }
 
   let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
+  try { body = await request.json(); } catch {
     return NextResponse.json({ error: 'Request body must be valid JSON.' }, { status: 400 });
   }
-
-  if (!body || typeof body !== 'object') {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
     return NextResponse.json({ error: 'Email payload is required.' }, { status: 400 });
   }
 
@@ -40,10 +54,7 @@ export async function POST(request: NextRequest) {
   const to = payload.to;
   const subject = payload.subject;
   const message = payload.text;
-
-  if (!validEmail(to)) {
-    return NextResponse.json({ error: 'A valid recipient email is required.' }, { status: 400 });
-  }
+  if (!validEmail(to)) return NextResponse.json({ error: 'A valid recipient email is required.' }, { status: 400 });
   if (typeof subject !== 'string' || !subject.trim() || subject.length > 240) {
     return NextResponse.json({ error: 'Subject is required and must be 240 characters or fewer.' }, { status: 400 });
   }
@@ -54,10 +65,7 @@ export async function POST(request: NextRequest) {
   try {
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from,
         to: [to],
@@ -66,6 +74,7 @@ export async function POST(request: NextRequest) {
         ...(validEmail(user.email) ? { reply_to: user.email } : {}),
       }),
       cache: 'no-store',
+      signal: AbortSignal.timeout(15000),
     });
 
     const result = await response.json().catch(() => ({})) as { id?: string; message?: string; name?: string };
@@ -82,7 +91,7 @@ export async function POST(request: NextRequest) {
       messageId: result.id || null,
       status: 'accepted',
       message: 'Resend accepted the email request. This does not confirm delivery to the recipient inbox.',
-    });
+    }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {
     return NextResponse.json({ error: 'Could not reach the email provider. Please try again.' }, { status: 502 });
   }
