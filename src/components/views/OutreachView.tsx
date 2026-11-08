@@ -59,6 +59,18 @@ function createDraft(args: {
 }) {
   const { channel, stage, lead, tone, problem, problemVerified, lastResponse, context, preferences, previewDetails, senderName } = args;
   if (!lead) return { subject: '', body: 'Select a real prospect from your lead records before drafting.' };
+  if (stage === 'IDENTIFY') return {
+    subject: '',
+    body: `RESEARCH FIRST — no message yet.
+
+Before contacting ${lead.business}, verify:
+• The business is active and the details belong to the correct business.
+• The person or channel you plan to contact is relevant.
+• One specific, factual observation about their website, social presence or customer journey.
+• Whether Coalesce Digital can genuinely help with the opportunity.
+
+Record the source and date of each observation. Do not turn a guess into a problem statement. Move to Engage only when you have a genuine reason to make contact.`
+  };
   const business = lead.business || 'your business';
   const contact = cleanName(lead.contactPerson);
   const greeting = contact ? `Hi ${contact},` : 'Hi there,';
@@ -69,7 +81,6 @@ function createDraft(args: {
   const preview = preferences.preview && previewDetails.trim() ? previewDetails.trim() : '';
   const lowPressure = preferences.lowPressure;
   const compliment = preferences.compliment && detail ? detail : '';
-  const questionEnd = preferences.question ? 'Would you be open to sharing a little more?' : 'Let me know what you think.';
   const signature = senderName.trim() || 'Coalesce Digital';
 
   const responseLead = response
@@ -200,7 +211,7 @@ export const OutreachView: React.FC<OutreachViewProps> = ({ leads, initialLead }
     setContext('');
     setCustomDraft('');
     setSubject('');
-  }, [selectedLeadId]);
+  }, [selectedLeadId, usableLeadProblem]);
 
   const canUseVerifiedProblem = problemVerified && problem.trim().length > 0;
   const generate = () => {
