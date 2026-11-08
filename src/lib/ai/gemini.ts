@@ -1,17 +1,8 @@
-import { GoogleGenAI } from '@google/genai';
 import type { MosesAIResult, MosesContext } from './types';
 import { serializeMosesContext } from './context';
 
-const MODEL = 'gemini-3.8-flash';
-
-let client: GoogleGenAI | null = null;
-
-function getClient(): GoogleGenAI | null {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey === 'MY_GEMINI_API_KEY') return null;
-  if (!client) client = new GoogleGenAI({ apiKey });
-  return client;
-}
+const MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
+const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
 const SYSTEM_INSTRUCTION = `You are MOSES, the operating intelligence for Coalesce Digital.
 
@@ -44,13 +35,13 @@ Give the answer first. Then provide concise reasoning and the next concrete move
 `;
 
 export async function generateMosesResponse(message: string, context: MosesContext): Promise<MosesAIResult> {
-  const ai = getClient();
+  const apiKey = process.env.GROQ_API_KEY;
   const timestamp = new Date().toISOString();
 
-  if (!ai) {
+  if (!apiKey || apiKey === 'YOUR_GROQ_API_KEY') {
     return {
-      reply: 'MOSES AI is not connected. GEMINI_API_KEY is missing or still using the placeholder. No AI answer was fabricated. Your local OS data remains intact.',
-      provider: 'gemini',
+      reply: 'MOSES AI is not connected. GROQ_API_KEY is missing or still using the placeholder. Your local OS data remains intact.',
+      provider: 'groq',
       model: MODEL,
       status: 'NOT_CONNECTED',
       timestamp,
@@ -64,27 +55,51 @@ ${serializeMosesContext(context)}
 [USER COMMAND]
 ${message}`;
 
-    const response = await ai.models.generateContent({
-      model: MODEL,
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        temperature: 0.4,
+    const response = await fetch(GROQ_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({
+        model: MODEL,
+        messages: [
+          { role: 'system', content: SYSTEM_INSTRUCTION },
+          { role: 'user', content: prompt },
+        ],
+        max_completion_tokens: 4096,
+      }),
+      signal: AbortSignal.timeout(60_000),
     });
 
+    const payload = await response.json().catch(() => null) as {
+      choices?: Array<{ message?: { content?: string | null } }>;
+      error?: { message?: string; type?: string; code?: string };
+    } | null;
+
+    if (!response.ok) {
+      const detail = payload?.error?.message || `Groq returned HTTP ${response.status}`;
+      console.error('MOSES Groq error:', { status: response.status, detail });
+      throw new Error(`Groq API error (${response.status}): ${detail}`);
+    }
+
+    const reply = payload?.choices?.[0]?.message?.content?.trim();
+    if (!reply) {
+      throw new Error('Groq returned a successful response without message content.');
+    }
+
     return {
-      reply: response.text || 'MOSES received the command but returned no verified response.',
-      provider: 'gemini',
+      reply,
+      provider: 'groq',
       model: MODEL,
       status: 'ONLINE',
       timestamp,
     };
   } catch (error) {
-    console.error('MOSES Gemini error:', error);
+    console.error('MOSES Groq request failed:', error);
     return {
-      reply: 'MOSES AI could not complete that request. No unverified answer was substituted. Check the Gemini connection and retry.',
-      provider: 'gemini',
+      reply: 'MOSES AI could not complete that request. Check the Groq API connection, model availability, and free-tier limits. Your local OS data remains intact.',
+      provider: 'groq',
       model: MODEL,
       status: 'ERROR',
       timestamp,
