@@ -7,6 +7,13 @@ export const dbConfigured = Boolean(url && key);
 
 const allowedTables = new Set(['workspaces', 'workspace_members', 'moses_records']);
 
+export class WorkspaceAuthorizationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'WorkspaceAuthorizationError';
+  }
+}
+
 function check(table: string) {
   const base = table.split('?')[0];
   if (!allowedTables.has(base) && base !== 'rpc/replace_moses_collection') throw new Error('Unsupported database table or RPC.');
@@ -98,17 +105,26 @@ export async function getAuthenticatedUser() {
   return user;
 }
 
+export async function getWorkspaceMembership(userId: string, workspaceId: string) {
+  const rows = await dbRequest(
+    'workspace_members?select=workspace_id,role&user_id=eq.' + encodeURIComponent(userId) +
+    '&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&limit=1',
+    { method: 'GET' }
+  );
+  if (!Array.isArray(rows) || !rows[0]) return null;
+  return {
+    workspaceId: rows[0].workspace_id as string,
+    role: typeof rows[0].role === 'string' ? rows[0].role.toUpperCase() : ''
+  };
+}
+
 export async function ensureWorkspaceForUser(userId: string) {
   if (!dbConfigured) throw new Error('MOSES database is not configured.');
 
   if (process.env.MOSES_WORKSPACE_ID) {
     const configuredId = process.env.MOSES_WORKSPACE_ID;
-    const members = await dbRequest(
-      'workspace_members?select=workspace_id&user_id=eq.' + encodeURIComponent(userId) +
-      '&workspace_id=eq.' + encodeURIComponent(configuredId) + '&limit=1',
-      { method: 'GET' }
-    );
-    if (Array.isArray(members) && members[0]?.workspace_id) return configuredId;
+    const membership = await getWorkspaceMembership(userId, configuredId);
+    if (membership) return configuredId;
 
     const workspaces = await dbRequest(
       'workspaces?select=id,owner_id&id=eq.' + encodeURIComponent(configuredId) + '&limit=1',
@@ -116,16 +132,16 @@ export async function ensureWorkspaceForUser(userId: string) {
     );
     const workspace = Array.isArray(workspaces) ? workspaces[0] : null;
     if (!workspace) throw new Error('Configured MOSES workspace does not exist. Run the database schema first.');
-    if (workspace.owner_id && workspace.owner_id !== userId) {
-      throw new Error('Authenticated user is not a member of the configured MOSES workspace.');
-    }
+
     if (!workspace.owner_id) {
-      await dbRequest('workspaces?id=eq.' + encodeURIComponent(configuredId), {
-        method: 'PATCH',
-        headers: { Prefer: 'return=minimal' },
-        body: JSON.stringify({ owner_id: userId })
-      });
+      throw new WorkspaceAuthorizationError(
+        'The configured MOSES workspace has no owner. An administrator must assign its owner before users can join.'
+      );
     }
+    if (workspace.owner_id !== userId) {
+      throw new WorkspaceAuthorizationError('You are not a member of the configured MOSES workspace.');
+    }
+
     await dbRequest('workspace_members?on_conflict=workspace_id,user_id', {
       method: 'POST',
       headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
@@ -135,11 +151,16 @@ export async function ensureWorkspaceForUser(userId: string) {
   }
 
   const memberships = await dbRequest(
-    'workspace_members?select=workspace_id&user_id=eq.' + encodeURIComponent(userId) + '&limit=1',
+    'workspace_members?select=workspace_id&user_id=eq.' + encodeURIComponent(userId) +
+    '&order=created_at.asc&limit=1',
     { method: 'GET' }
   );
-  if (Array.isArray(memberships) && memberships[0]?.workspace_id) return memberships[0].workspace_id as string;
+  if (Array.isArray(memberships) && memberships[0]?.workspace_id) {
+    return memberships[0].workspace_id as string;
+  }
 
+  // New users receive an isolated workspace. They are never silently added to
+  // another user's workspace.
   const created = await dbRequest('workspaces', {
     method: 'POST',
     headers: { Prefer: 'return=representation' },
