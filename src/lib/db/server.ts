@@ -51,10 +51,13 @@ export async function dbRequest(table: string, init: RequestInit = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-export async function listRecords(collection: string, workspaceId: string) {
+export async function listRecords(collection: string, workspaceId: string, limit?: number) {
+  const limitQuery = Number.isInteger(limit) && (limit ?? 0) > 0
+    ? '&limit=' + Math.min(limit as number, 500)
+    : '';
   const rows = await dbRequest(
     'moses_records?select=data&collection=eq.' + encodeURIComponent(collection) +
-    '&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&order=updated_at.desc',
+    '&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&order=updated_at.desc' + limitQuery,
     { method: 'GET' }
   );
   if (!Array.isArray(rows)) throw new Error('Unexpected database response while reading ' + collection + '.');
