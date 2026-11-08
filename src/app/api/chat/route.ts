@@ -56,7 +56,21 @@ export async function POST(req: Request) {
     const requestedSection = typeof payload.activeSection === "string" ? payload.activeSection.slice(0, 40) : "COMMAND";
     const context = buildMosesContext({ activeSection: requestedSection, collections });
     const result = await generateMosesResponse(message, context);
-    return NextResponse.json(result, { headers: { "Cache-Control": "no-store" } });
+    const contextDiagnostics = {
+      ...context.system,
+      collections: Object.fromEntries(
+        MOSES_COLLECTION_NAMES.map((collection) => {
+          const snapshot = context.collections[collection];
+          return [collection, {
+            status: snapshot.status,
+            count: snapshot.count,
+            fetchedCount: snapshot.fetchedCount,
+            truncated: snapshot.truncated,
+          }];
+        })
+      ),
+    };
+    return NextResponse.json({ ...result, contextDiagnostics }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     if (error instanceof WorkspaceAuthorizationError) {
       return NextResponse.json({ error: error.message }, { status: 403 });
