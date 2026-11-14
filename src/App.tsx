@@ -431,7 +431,7 @@ export function App() {
   }
 
   return (
-    <div className="flex h-screen w-screen bg-white text-zinc-900 overflow-hidden font-sans select-none">
+    <div className="flex h-screen w-screen bg-white text-zinc-900 overflow-hidden font-sans">
       {/* Desktop & Collapsible Sidebar */}
       <div className="hidden lg:block h-full">
         <Sidebar
