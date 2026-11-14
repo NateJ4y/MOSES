@@ -248,7 +248,7 @@ export function App() {
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       console.warn('Audio recording is not supported in this browser.');
-      setTranscript('Audio recording is not supported in this browser. Try the latest Brave or Chrome.');
+      setVoiceStatus('Audio recording is not supported in this browser. Try the latest Brave or Chrome.');
       return;
     }
 
@@ -348,7 +348,7 @@ export function App() {
     };
 
     setMessages(prev => [...prev, newUserMsg]);
-    setTranscript('');
+    setVoiceStatus('');
 
     try {
       const response = await fetch('/api/chat', {
@@ -581,8 +581,11 @@ export function App() {
                 onSendMessage={handleExecutePrompt}
                 isProcessing={isProcessing}
                 isListening={isListening}
+                isTranscribing={isTranscribing}
+                hasRecordedAudio={Boolean(recordedAudio)}
                 onToggleVoice={handleToggleVoice}
-                transcript={transcript}
+                onSendVoice={handleSendVoice}
+                voiceStatus={voiceStatus}
               />
             )
           )}
