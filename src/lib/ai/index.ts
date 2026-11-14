@@ -1,4 +1,4 @@
-export { buildMosesContext, serializeMosesContext } from './context';
+export { buildMosesContext, serializeMosesContext, selectRelevantCollections } from './context';
 export { generateMosesResponse } from './groq';
 export { MOSES_COLLECTION_NAMES } from './types';
 export type {
