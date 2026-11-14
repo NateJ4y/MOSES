@@ -22,7 +22,10 @@ interface CommandFeedViewProps {
   onSendMessage: (msg: string) => void;
   isProcessing: boolean;
   isListening: boolean;
+  isTranscribing: boolean;
+  hasRecordedAudio: boolean;
   onToggleVoice: () => void;
+  onSendVoice: () => void;
   transcript: string;
 }
 
@@ -31,7 +34,10 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
   onSendMessage,
   isProcessing,
   isListening,
+  isTranscribing,
+  hasRecordedAudio,
   onToggleVoice,
+  onSendVoice,
   transcript
 }) => {
   const [inputVal, setInputVal] = useState('');
@@ -54,7 +60,12 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputVal.trim() || isProcessing) return;
+    if (hasRecordedAudio) {
+      if (isTranscribing || isProcessing) return;
+      onSendVoice();
+      return;
+    }
+    if (!inputVal.trim() || isProcessing || isTranscribing) return;
     playCyberSound('send');
     onSendMessage(inputVal);
     setInputVal('');
@@ -261,6 +272,10 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
           ))}
         </div>
 
+        {isListening && <p className="mb-2 px-2 text-[11px] font-medium text-rose-600 animate-pulse">Recording audio · click the microphone when you're finished.</p>}
+        {hasRecordedAudio && !isTranscribing && <p className="mb-2 px-2 text-[11px] font-medium text-emerald-700">Voice message ready · press Send to transcribe and submit it.</p>}
+        {isTranscribing && <p className="mb-2 px-2 text-[11px] font-medium text-zinc-500">Uploading audio and transcribing with MOSES...</p>}
+
         {/* Input Form */}
         <form
           onSubmit={handleSubmit}
@@ -274,7 +289,7 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
             type="text"
             value={inputVal}
             onChange={(e) => setInputVal(e.target.value)}
-            placeholder={isListening ? "Listening to your voice command..." : "Ask Moses anything or type a directive..."}
+            placeholder={isListening ? "Recording... click the microphone to finish" : isTranscribing ? "Transcribing your voice message..." : "Ask Moses anything or type a directive..."}
             className="flex-1 bg-transparent py-2.5 px-2 text-xs sm:text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none font-medium"
           />
 
@@ -290,17 +305,19 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-700 animate-pulse'
                   : 'bg-zinc-100 border-zinc-200 text-zinc-600 hover:bg-zinc-200'
               }`}
-              title="Voice Input"
+              title={isListening ? "Stop recording" : "Record a voice message"}
+              disabled={isTranscribing || isProcessing}
             >
               {isListening ? <Mic size={15} /> : <MicOff size={15} />}
             </button>
 
             <button
               type="submit"
-              disabled={!inputVal.trim() || isProcessing}
+              disabled={(!inputVal.trim() && !hasRecordedAudio) || isProcessing || isTranscribing || isListening}
               className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xs cursor-pointer"
             >
-              <Send size={15} />
+              {isTranscribing ? <span className="text-[10px] font-semibold px-1">...</span> : <Send size={15} />}
+              
             </button>
           </div>
         </form>
