@@ -681,6 +681,8 @@ export function App() {
                 onSendMessage={handleExecutePrompt}
                 isProcessing={isProcessing}
                 isListening={isListening}
+                isLiveMode={isLiveMode}
+                onToggleVoiceMode={handleToggleVoiceMode}
                 isTranscribing={isTranscribing}
                 hasRecordedAudio={Boolean(voiceTranscript.trim())}
                 onToggleVoice={handleToggleVoice}
