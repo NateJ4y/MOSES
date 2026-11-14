@@ -6,8 +6,8 @@ import type {
 } from './types';
 import { MOSES_COLLECTION_NAMES } from './types';
 
-const MAX_ITEMS_PER_COLLECTION = 100;
-const MAX_MESSAGES = 30;
+const MAX_ITEMS_PER_COLLECTION = 25;
+const MAX_MESSAGES = 20;
 const MAX_CONTEXT_CHARACTERS = 12_000;
 const MAX_STRING_LENGTH = 3_000;
 const MAX_OBJECT_KEYS = 50;
@@ -105,7 +105,7 @@ function updateSystem(context: Omit<MosesContext, 'system'>): MosesContext {
   return {
     ...context,
     system: {
-      completeness: unavailableCollections || truncatedCollections ? 'partial' : 'complete',
+      completeness: unavailableCollections || truncatedCollections || notQueriedCollections ? 'partial' : 'complete',
       collectionCount: snapshots.length,
       loadedCollections,
       emptyCollections,
