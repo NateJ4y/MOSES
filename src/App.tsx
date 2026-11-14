@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 const persistenceQueues = new Map<string, Promise<void>>();
 import { NavSection, Lead, StrategicWarning, ChatMessage, LeadStatus, DigitalOpsProject, EmailMessage, ClientDNA } from './types';
@@ -45,7 +45,11 @@ export function App() {
   const [aiState, setAiState] = useState<'IDLE' | 'LISTENING' | 'THINKING' | 'RESPONDING'>('IDLE');
   const [isListening, setIsListening] = useState<boolean>(false);
   const [transcript, setTranscript] = useState<string>('');
+  const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null);
+  const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // UI state
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
@@ -233,34 +237,95 @@ export function App() {
 
   // No demo/sample loading is permitted.
 
-  // Handle Voice Input
-  const handleToggleVoice = useCallback(() => {
+  // Record voice locally, then upload the completed audio for server-side transcription.
+  const handleToggleVoice = useCallback(async () => {
     if (isListening) {
-      speechRecognizer.stop();
+      mediaRecorderRef.current?.stop();
       setIsListening(false);
       setAiState('IDLE');
-    } else {
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      console.warn('Audio recording is not supported in this browser.');
+      setTranscript('Audio recording is not supported in this browser. Try the latest Brave or Chrome.');
+      return;
+    }
+
+    try {
+      setRecordedAudio(null);
+      setTranscript('');
+      audioChunksRef.current = [];
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const preferredType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
+        .find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = preferredType
+        ? new MediaRecorder(stream, { mimeType: preferredType })
+        : new MediaRecorder(stream);
+
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      recorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        stream.getTracks().forEach((track) => track.stop());
+        mediaRecorderRef.current = null;
+        audioChunksRef.current = [];
+        if (audioBlob.size > 0) {
+          setRecordedAudio(audioBlob);
+          setTranscript('Audio recording ready. Press Send to transcribe and submit it to MOSES.');
+        } else {
+          setTranscript('No audio was captured. Please try recording again.');
+        }
+      };
+
+      recorder.onerror = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        mediaRecorderRef.current = null;
+        setIsListening(false);
+        setAiState('IDLE');
+        setTranscript('Recording failed. Please try again.');
+      };
+
+      recorder.start(1000);
       setIsListening(true);
       setAiState('LISTENING');
       playCyberSound('blip');
-
-      speechRecognizer.start(
-        (text, isFinal) => {
-          setTranscript(text);
-          if (isFinal) {
-            setIsListening(false);
-            setAiState('THINKING');
-            handleExecutePrompt(text);
-          }
-        },
-        (error) => {
-          console.warn('Speech Recognition error:', error);
-          setIsListening(false);
-          setAiState('IDLE');
-        }
-      );
+    } catch (error) {
+      console.error('Could not start voice recording:', error);
+      setIsListening(false);
+      setAiState('IDLE');
+      setTranscript('Could not access the microphone. Check Brave site permissions and try again.');
     }
   }, [isListening]);
+
+  const handleSendVoice = async () => {
+    if (!recordedAudio || isTranscribing || isProcessing) return;
+    setIsTranscribing(true);
+    setTranscript('Transcribing your voice message...');
+    setAiState('THINKING');
+    try {
+      const formData = new FormData();
+      const extension = recordedAudio.type.includes('mp4') ? 'mp4' : recordedAudio.type.includes('ogg') ? 'ogg' : 'webm';
+      formData.append('file', recordedAudio, `moses-voice-message.${extension}`);
+      const response = await fetch('/api/transcribe', { method: 'POST', body: formData });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || `Transcription failed (${response.status}).`);
+      const spokenMessage = typeof payload.text === 'string' ? payload.text.trim() : '';
+      if (!spokenMessage) throw new Error('No speech was detected in that recording. Please try again.');
+      setRecordedAudio(null);
+      setTranscript('');
+      playCyberSound('send');
+      await handleExecutePrompt(spokenMessage);
+    } catch (error) {
+      console.error('MOSES voice transcription failed:', error);
+      setTranscript(error instanceof Error ? error.message : 'Could not transcribe the audio. Please try again.');
+      setAiState('IDLE');
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
 
   // Execute Prompt / Chat with Moses
   const handleExecutePrompt = async (promptText: string) => {
@@ -499,7 +564,10 @@ export function App() {
                 onExecutePrompt={handleExecutePrompt}
                 onNavigateTo={handleNavigate}
                 isListening={isListening}
+                isTranscribing={isTranscribing}
+                hasRecordedAudio={Boolean(recordedAudio)}
                 onToggleVoice={handleToggleVoice}
+                onSendVoice={handleSendVoice}
                 transcript={transcript}
                 leads={leads}
                 warnings={warnings}
