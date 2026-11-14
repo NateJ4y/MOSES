@@ -565,6 +565,10 @@ export function App() {
                 onNavigateTo={handleNavigate}
                 isListening={isListening}
                 onToggleVoice={handleToggleVoice}
+                isTranscribing={isTranscribing}
+                hasRecordedAudio={Boolean(recordedAudio)}
+                onSendVoice={handleSendVoice}
+                voiceStatus={voiceStatus}
                 leads={leads}
                 warnings={warnings}
                 projects={projects}
