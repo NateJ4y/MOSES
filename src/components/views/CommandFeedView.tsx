@@ -22,6 +22,8 @@ interface CommandFeedViewProps {
   onSendMessage: (msg: string) => void;
   isProcessing: boolean;
   isListening: boolean;
+  isLiveMode: boolean;
+  onToggleVoiceMode: (live: boolean) => void;
   isTranscribing: boolean;
   hasRecordedAudio: boolean;
   onToggleVoice: () => void;
@@ -36,6 +38,8 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
   onSendMessage,
   isProcessing,
   isListening,
+  isLiveMode,
+  onToggleVoiceMode,
   isTranscribing,
   hasRecordedAudio,
   onToggleVoice,
@@ -287,6 +291,10 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
           />
 
           <div className="flex items-center gap-1.5 pr-1">
+            <div className="flex items-center rounded-xl bg-zinc-100 border border-zinc-200 p-0.5" aria-label="Voice input mode">
+              <button type="button" onClick={() => onToggleVoiceMode(false)} disabled={isListening || isTranscribing || isProcessing} className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all disabled:opacity-50 ${!isLiveMode ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}>Record</button>
+              <button type="button" onClick={() => onToggleVoiceMode(true)} disabled={isListening || isTranscribing || isProcessing} className={`px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all disabled:opacity-50 ${isLiveMode ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}>Live</button>
+            </div>
             <button
               type="button"
               onClick={() => {
