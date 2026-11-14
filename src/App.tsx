@@ -76,10 +76,10 @@ function getStartupAnnouncement(messages: ChatMessage[]): string {
   ];
 
   if (lastUserMove && Math.random() < 0.65) {
-    const normalized = lastUserMove.text.replace(/[\\t\\r\\n]+/g, ' ').replace(/\\s{2,}/g, ' ').trim();
-    const firstSentence = normalized.match(/^.{1,180}?(?:[.!?](?=\\s|$)|$)/)?.[0] || normalized;
+    const normalized = lastUserMove.text.replace(/[\t\r\n]+/g, ' ').replace(/\s{2,}/g, ' ').trim();
+    const firstSentence = normalized.match(/^.{1,180}?(?:[.!?](?=\s|$)|$)/)?.[0] || normalized;
     let command = firstSentence.replace(/[.!?]+$/, '').trim();
-    if (command.length > 88) command = command.slice(0, 85).replace(/\\s+\\S*$/, '').trimEnd() + '…';
+    if (command.length > 88) command = command.slice(0, 85).replace(/\s+\S*$/, '').trimEnd() + '…';
     if (command) return `Last move: your latest command was "${command}".`;
   }
 
