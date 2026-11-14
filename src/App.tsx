@@ -329,12 +329,12 @@ export function App() {
       const fallbackMsg: ChatMessage = {
         id: `moses-${Date.now()}`,
         sender: 'MOSES',
-        text: `MOSES Core is unavailable right now. I will not fabricate a business answer to compensate.\\n\\nSTATUS: NOT CONNECTED / ERROR\\n\\nYour local records remain intact. Check the Gemini API configuration or server logs, then retry the command.`,
+        text: `MOSES Core is unavailable right now. I will not fabricate a business answer to compensate.\\n\\nSTATUS: NOT CONNECTED / ERROR\\n\\nYour local records remain intact. Check the Groq API configuration or server logs, then retry the command.`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         intent: 'SYSTEM_ERROR',
         structuredResponse: {
           analysis: 'AI response could not be verified.',
-          plan: ['Check GEMINI_API_KEY configuration', 'Retry the command', 'Use the relevant OS module directly if urgent'],
+          plan: ['Check GROQ_API_KEY configuration', 'Retry the command', 'Use the relevant OS module directly if urgent'],
           action: 'Reconnect MOSES Core and retry.'
         }
       };
