@@ -22,7 +22,10 @@ interface HomeViewProps {
   onNavigateTo: (section: any) => void;
   isListening: boolean;
   onToggleVoice: () => void;
-  transcript: string;
+  isTranscribing: boolean;
+  hasRecordedAudio: boolean;
+  onSendVoice: () => void;
+  voiceStatus: string;
   leads: Lead[];
   warnings: StrategicWarning[];
   projects?: DigitalOpsProject[];
@@ -35,7 +38,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onNavigateTo,
   isListening,
   onToggleVoice,
-  transcript,
+  isTranscribing,
+  hasRecordedAudio,
+  onSendVoice,
+  voiceStatus,
   leads,
   warnings,
   projects = [],
@@ -52,16 +58,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
     else setGreeting('Good evening, Nate.');
   }, []);
 
-  // If speech transcription updates, populate inputVal
-  useEffect(() => {
-    if (transcript) {
-      setInputVal(transcript);
-    }
-  }, [transcript]);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputVal.trim()) return;
+    if (hasRecordedAudio) {
+      if (isTranscribing) return;
+      onSendVoice();
+      return;
+    }
+    if (!inputVal.trim() || isTranscribing) return;
     playCyberSound('send');
     onExecutePrompt(inputVal);
     setInputVal('');
@@ -163,7 +167,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               type="text"
               value={inputVal}
               onChange={(e) => setInputVal(e.target.value)}
-              placeholder={isListening ? "Listening to your voice command..." : "Ask Moses anything..."}
+              placeholder={isListening ? "Recording audio... click the microphone when finished" : "Ask Moses anything..."}
               className="flex-1 bg-transparent py-2.5 px-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none tracking-tight font-medium"
             />
 
@@ -180,19 +184,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
                     ? 'bg-emerald-500 text-white border-emerald-600 shadow-md animate-pulse'
                     : 'bg-zinc-100 border-zinc-200 text-zinc-700 hover:bg-zinc-200 hover:text-black'
                 }`}
-                title={isListening ? "Listening... (Click to stop)" : "Voice Command (Speech to Text)"}
+                title={isListening ? "Stop recording" : "Record a voice message"}
               >
-                {isListening ? <Mic size={16} strokeWidth={2} /> : <MicOff size={16} strokeWidth={1.5} />}
+                {isListening ? <MicOff size={16} strokeWidth={2} /> : <Mic size={16} strokeWidth={1.5} />}
               </button>
 
               {/* Send Button */}
               <button
                 type="submit"
-                disabled={!inputVal.trim()}
+                disabled={(!inputVal.trim() && !hasRecordedAudio) || isTranscribing}
                 className="p-2.5 rounded-full bg-black text-white hover:bg-zinc-800 disabled:opacity-25 disabled:hover:bg-black disabled:cursor-not-allowed transition-all shadow-sm font-bold cursor-pointer"
                 title="Send Command (Enter)"
               >
-                <Send size={16} strokeWidth={2} />
+                {isTranscribing ? <span className="text-[10px] font-bold">...</span> : <Send size={16} strokeWidth={2} />}
               </button>
             </div>
           </form>
@@ -201,7 +205,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="flex items-center justify-between px-4 mt-2.5 text-[11px] text-zinc-400 font-medium">
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              VOICE RECOGNITION: {isListening ? 'STREAMING AUDIO' : 'READY'}
+              {voiceStatus || (isListening ? 'RECORDING AUDIO' : hasRecordedAudio ? 'AUDIO READY TO SEND' : 'VOICE READY')}
             </span>
             <span className="font-mono-tech text-[10px]">ENTER OR ⌘K</span>
           </div>
