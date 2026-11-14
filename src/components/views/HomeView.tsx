@@ -21,6 +21,8 @@ interface HomeViewProps {
   onExecutePrompt: (prompt: string) => void;
   onNavigateTo: (section: any) => void;
   isListening: boolean;
+  isLiveMode: boolean;
+  onToggleVoiceMode: (live: boolean) => void;
   onToggleVoice: () => void;
   isTranscribing: boolean;
   hasRecordedAudio: boolean;
@@ -39,6 +41,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onExecutePrompt,
   onNavigateTo,
   isListening,
+  isLiveMode,
+  onToggleVoiceMode,
   onToggleVoice,
   isTranscribing,
   hasRecordedAudio,
@@ -173,6 +177,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
             />
 
             <div className="flex items-center gap-2 pr-1">
+              <div className="flex items-center rounded-full bg-zinc-100 border border-zinc-200 p-0.5" aria-label="Voice input mode">
+                <button type="button" onClick={() => onToggleVoiceMode(false)} disabled={isListening || isTranscribing} className={`px-2 py-1 rounded-full text-[10px] font-semibold transition-all disabled:opacity-50 ${!isLiveMode ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}>Record</button>
+                <button type="button" onClick={() => onToggleVoiceMode(true)} disabled={isListening || isTranscribing} className={`px-2 py-1 rounded-full text-[10px] font-semibold transition-all disabled:opacity-50 ${isLiveMode ? 'bg-white text-zinc-900 shadow-sm' : 'text-zinc-500 hover:text-zinc-900'}`}>Live</button>
+              </div>
               {/* Microphone Button */}
               <button
                 type="button"
