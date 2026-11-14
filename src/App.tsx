@@ -28,7 +28,7 @@ import { ClientDNAView } from './components/views/ClientDNAView';
 
 // Audio & Speech
 import { playCyberSound } from './utils/audio';
-import { speechRecognizer, speakText } from './utils/speech';
+import { speakText } from './utils/speech';
 
 export function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('COMMAND');
@@ -44,7 +44,7 @@ export function App() {
   // AI & Voice State
   const [aiState, setAiState] = useState<'IDLE' | 'LISTENING' | 'THINKING' | 'RESPONDING'>('IDLE');
   const [isListening, setIsListening] = useState<boolean>(false);
-  const [transcript, setTranscript] = useState<string>('');
+  const [voiceStatus, setVoiceStatus] = useState<string>('');
   const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null);
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -254,7 +254,7 @@ export function App() {
 
     try {
       setRecordedAudio(null);
-      setTranscript('');
+      setVoiceStatus('Recording audio...');
       audioChunksRef.current = [];
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const preferredType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
@@ -274,9 +274,9 @@ export function App() {
         audioChunksRef.current = [];
         if (audioBlob.size > 0) {
           setRecordedAudio(audioBlob);
-          setTranscript('Audio recording ready. Press Send to transcribe and submit it to MOSES.');
+          setVoiceStatus('Voice message ready · press Send to transcribe and submit it.');
         } else {
-          setTranscript('No audio was captured. Please try recording again.');
+          setVoiceStatus('No audio was captured. Please try recording again.');
         }
       };
 
@@ -285,7 +285,7 @@ export function App() {
         mediaRecorderRef.current = null;
         setIsListening(false);
         setAiState('IDLE');
-        setTranscript('Recording failed. Please try again.');
+        setVoiceStatus('Recording failed. Please try again.');
       };
 
       recorder.start(1000);
@@ -296,14 +296,14 @@ export function App() {
       console.error('Could not start voice recording:', error);
       setIsListening(false);
       setAiState('IDLE');
-      setTranscript('Could not access the microphone. Check Brave site permissions and try again.');
+      setVoiceStatus('Could not access the microphone. Check Brave site permissions and try again.');
     }
   }, [isListening]);
 
   const handleSendVoice = async () => {
     if (!recordedAudio || isTranscribing || isProcessing) return;
     setIsTranscribing(true);
-    setTranscript('Transcribing your voice message...');
+    setVoiceStatus('Uploading audio and transcribing with MOSES...');
     setAiState('THINKING');
     try {
       const formData = new FormData();
@@ -315,12 +315,12 @@ export function App() {
       const spokenMessage = typeof payload.text === 'string' ? payload.text.trim() : '';
       if (!spokenMessage) throw new Error('No speech was detected in that recording. Please try again.');
       setRecordedAudio(null);
-      setTranscript('');
+      setVoiceStatus('');
       playCyberSound('send');
       await handleExecutePrompt(spokenMessage);
     } catch (error) {
       console.error('MOSES voice transcription failed:', error);
-      setTranscript(error instanceof Error ? error.message : 'Could not transcribe the audio. Please try again.');
+      setVoiceStatus(error instanceof Error ? error.message : 'Could not transcribe the audio. Please try again.');
       setAiState('IDLE');
     } finally {
       setIsTranscribing(false);
@@ -568,7 +568,7 @@ export function App() {
                 hasRecordedAudio={Boolean(recordedAudio)}
                 onToggleVoice={handleToggleVoice}
                 onSendVoice={handleSendVoice}
-                transcript={transcript}
+                voiceStatus={voiceStatus}
                 leads={leads}
                 warnings={warnings}
                 projects={projects}
