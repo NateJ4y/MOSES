@@ -544,7 +544,7 @@ export function App() {
                 isProcessing={isProcessing}
                 isListening={isListening}
                 isTranscribing={isTranscribing}
-                hasRecordedAudio={Boolean(recordedAudio)}
+                hasRecordedAudio={Boolean(voiceTranscript.trim())}
                 onToggleVoice={handleToggleVoice}
                 onSendVoice={handleSendVoice}
                 voiceStatus={voiceStatus}
