@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { buildMosesContext, generateMosesResponse, MOSES_COLLECTION_NAMES } from "@/lib/ai";
+import { buildMosesContext, generateMosesResponse, MOSES_COLLECTION_NAMES, selectRelevantCollections } from "@/lib/ai";
 import {
   dbConfigured,
   ensureWorkspaceForUser,
@@ -38,14 +38,16 @@ export async function POST(req: Request) {
     if (!message) return NextResponse.json({ error: "Message is required." }, { status: 400 });
     if (message.length > 8000) return NextResponse.json({ error: "Message must be 8,000 characters or fewer." }, { status: 413 });
 
-    // Never trust business records supplied by the browser. Retrieve every
-    // approved collection from the authenticated workspace on the server.
-    // A failed read remains explicitly unavailable; it is never represented as empty.
+    // Never trust business records supplied by the browser. Select only the
+    // collections relevant to this command, then retrieve them server-side.
+    // Unselected collections remain explicitly "not_queried", not "empty".
+    const requestedSection = typeof payload.activeSection === "string" ? payload.activeSection.slice(0, 40) : "COMMAND";
+    const selectedCollections = selectRelevantCollections(message, requestedSection);
     const collectionReads = await Promise.allSettled(
-      MOSES_COLLECTION_NAMES.map((collection) => listRecords(collection, workspaceId, 101))
+      selectedCollections.map((collection) => listRecords(collection, workspaceId, collection === "messages" ? 21 : 26))
     );
     const collections = Object.fromEntries(
-      MOSES_COLLECTION_NAMES.map((collection, index) => {
+      selectedCollections.map((collection, index) => {
         const result = collectionReads[index];
         return [collection, result.status === "fulfilled"
           ? { records: result.value }
@@ -53,11 +55,11 @@ export async function POST(req: Request) {
       })
     );
 
-    const requestedSection = typeof payload.activeSection === "string" ? payload.activeSection.slice(0, 40) : "COMMAND";
     const context = buildMosesContext({ activeSection: requestedSection, collections });
     const result = await generateMosesResponse(message, context);
     const contextDiagnostics = {
       ...context.system,
+      queriedCollections: selectedCollections,
       collections: Object.fromEntries(
         MOSES_COLLECTION_NAMES.map((collection) => {
           const snapshot = context.collections[collection];
