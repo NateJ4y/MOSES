@@ -4,9 +4,9 @@ import { dbConfigured, dbRequest } from '@/lib/db/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const hasGeminiKey = Boolean(
-    process.env.GEMINI_API_KEY &&
-    process.env.GEMINI_API_KEY !== 'MY_GEMINI_API_KEY'
+  const hasGroqKey = Boolean(
+    process.env.GROQ_API_KEY &&
+    process.env.GROQ_API_KEY !== 'MY_GROQ_API_KEY'
   );
 
   let database: 'CONNECTED' | 'NOT_CONFIGURED' | 'ERROR' = 'NOT_CONFIGURED';
@@ -21,7 +21,7 @@ export async function GET() {
 
   return NextResponse.json({
     status: 'ONLINE',
-    aiCore: hasGeminiKey ? 'CONFIGURED' : 'NOT_CONFIGURED',
+    aiCore: hasGroqKey ? 'CONFIGURED' : 'NOT_CONFIGURED',
     database,
     version: '2.5.0-COALESCE-OS',
     uptime: typeof process.uptime === 'function' ? process.uptime() : 0
