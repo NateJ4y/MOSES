@@ -26,6 +26,8 @@ interface HomeViewProps {
   hasRecordedAudio: boolean;
   onSendVoice: () => void;
   voiceStatus: string;
+  voiceTranscript: string;
+  onVoiceTranscriptChange: (value: string) => void;
   leads: Lead[];
   warnings: StrategicWarning[];
   projects?: DigitalOpsProject[];
@@ -42,6 +44,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
   hasRecordedAudio,
   onSendVoice,
   voiceStatus,
+  voiceTranscript,
+  onVoiceTranscriptChange,
   leads,
   warnings,
   projects = [],
@@ -60,14 +64,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (hasRecordedAudio) {
-      if (isTranscribing) return;
-      onSendVoice();
-      return;
-    }
-    if (!inputVal.trim() || isTranscribing) return;
+    const message = voiceTranscript.trim() || inputVal.trim();
+    if (!message || isTranscribing) return;
     playCyberSound('send');
-    onExecutePrompt(inputVal);
+    if (voiceTranscript.trim()) onSendVoice();
+    else onExecutePrompt(message);
     setInputVal('');
   };
 
@@ -165,9 +166,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
             <input
               type="text"
-              value={inputVal}
-              onChange={(e) => setInputVal(e.target.value)}
-              placeholder={isListening ? "Recording audio... click the microphone when finished" : "Ask Moses anything..."}
+              value={voiceTranscript || inputVal}
+              onChange={(e) => voiceTranscript ? onVoiceTranscriptChange(e.target.value) : setInputVal(e.target.value)}
+              placeholder={isListening ? "Listening... your words will appear here" : "Ask Moses anything..."}
               className="flex-1 bg-transparent py-2.5 px-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none tracking-tight font-medium"
             />
 
@@ -192,7 +193,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {/* Send Button */}
               <button
                 type="submit"
-                disabled={(!inputVal.trim() && !hasRecordedAudio) || isTranscribing}
+                disabled={(!inputVal.trim() && !voiceTranscript.trim()) || isTranscribing}
                 className="p-2.5 rounded-full bg-black text-white hover:bg-zinc-800 disabled:opacity-25 disabled:hover:bg-black disabled:cursor-not-allowed transition-all shadow-sm font-bold cursor-pointer"
                 title="Send Command (Enter)"
               >
@@ -205,7 +206,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="flex items-center justify-between px-4 mt-2.5 text-[11px] text-zinc-400 font-medium">
             <span className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              {voiceStatus || (isListening ? 'RECORDING AUDIO' : hasRecordedAudio ? 'AUDIO READY TO SEND' : 'VOICE READY')}
+              {voiceStatus || (isListening ? 'LISTENING' : hasRecordedAudio ? 'TRANSCRIPT READY TO SEND' : 'VOICE READY')}
             </span>
             <span className="font-mono-tech text-[10px]">ENTER OR ⌘K</span>
           </div>
