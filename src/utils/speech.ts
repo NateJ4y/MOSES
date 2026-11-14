@@ -156,11 +156,11 @@ export function speakText(text: string, enabled = true, pitch = 0.95, rate = 1.0
     window.speechSynthesis.cancel(); // Stop current speech
     // Clean markdown formatting before speaking
     const cleanText = text
-      .replace(/\\*\\*([^*]+)\\*\\*/g, '$1')
-      .replace(/\\*([^*]+)\\*/g, '$1')
-      .replace(/#+\\s+/g, '')
-      .replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g, '$1')
-      .replace(/\x60([^\x60]+)\x60/g, '$1')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/#+\s+/g, '')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
       .slice(0, 300); // Speak first 300 chars for concise audio response
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
