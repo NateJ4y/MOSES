@@ -28,7 +28,7 @@ import { ClientDNAView } from './components/views/ClientDNAView';
 
 // Audio & Speech
 import { playCyberSound } from './utils/audio';
-import { speakText } from './utils/speech';
+import { speakText, startSpeechRecognition, stopSpeechRecognition } from './utils/speech';
 
 export function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('COMMAND');
@@ -45,11 +45,10 @@ export function App() {
   const [aiState, setAiState] = useState<'IDLE' | 'LISTENING' | 'THINKING' | 'RESPONDING'>('IDLE');
   const [isListening, setIsListening] = useState<boolean>(false);
   const [voiceStatus, setVoiceStatus] = useState<string>('');
-  const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null);
+  const [voiceTranscript, setVoiceTranscript] = useState<string>('');
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
+
 
   // UI state
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
@@ -237,94 +236,55 @@ export function App() {
 
   // No demo/sample loading is permitted.
 
-  // Record voice locally, then upload the completed audio for server-side transcription.
-  const handleToggleVoice = useCallback(async () => {
+  // Live speech recognition: keep an editable transcript in the command input.
+  const handleToggleVoice = useCallback(() => {
     if (isListening) {
-      mediaRecorderRef.current?.stop();
+      stopSpeechRecognition();
       setIsListening(false);
       setAiState('IDLE');
+      setVoiceStatus('Voice input stopped · review or edit your transcript before sending.');
       return;
     }
 
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      console.warn('Audio recording is not supported in this browser.');
-      setVoiceStatus('Audio recording is not supported in this browser. Try the latest Brave or Chrome.');
-      return;
-    }
-
-    try {
-      setRecordedAudio(null);
-      setVoiceStatus('Recording audio...');
-      audioChunksRef.current = [];
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const preferredType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4']
-        .find((type) => MediaRecorder.isTypeSupported(type));
-      const recorder = preferredType
-        ? new MediaRecorder(stream, { mimeType: preferredType })
-        : new MediaRecorder(stream);
-
-      mediaRecorderRef.current = recorder;
-      recorder.ondataavailable = (event) => {
-        if (event.data && event.data.size > 0) audioChunksRef.current.push(event.data);
-      };
-      recorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
-        stream.getTracks().forEach((track) => track.stop());
-        mediaRecorderRef.current = null;
-        audioChunksRef.current = [];
-        if (audioBlob.size > 0) {
-          setRecordedAudio(audioBlob);
-          setVoiceStatus('Voice message ready · press Send to transcribe and submit it.');
-        } else {
-          setVoiceStatus('No audio was captured. Please try recording again.');
-        }
-      };
-
-      recorder.onerror = () => {
-        stream.getTracks().forEach((track) => track.stop());
-        mediaRecorderRef.current = null;
+    setVoiceTranscript('');
+    setVoiceStatus('Listening · your words will appear here as you speak.');
+    const started = startSpeechRecognition(
+      (text) => {
+        setVoiceTranscript(text);
+        setVoiceStatus('Listening · live transcription');
+      },
+      () => {
         setIsListening(false);
         setAiState('IDLE');
-        setVoiceStatus('Recording failed. Please try again.');
-      };
+        setVoiceStatus((current) => current.startsWith('Listening')
+          ? 'Voice input stopped · review or edit your transcript before sending.'
+          : current);
+      },
+      (error) => {
+        setIsListening(false);
+        setAiState('IDLE');
+        setVoiceStatus(error);
+      }
+    );
 
-      recorder.start(1000);
+    if (started) {
       setIsListening(true);
       setAiState('LISTENING');
       playCyberSound('blip');
-    } catch (error) {
-      console.error('Could not start voice recording:', error);
-      setIsListening(false);
-      setAiState('IDLE');
-      setVoiceStatus('Could not access the microphone. Check Brave site permissions and try again.');
+    } else {
+      setVoiceStatus('Live speech recognition is not available. Try enabling speech recognition in Brave or use Chrome.');
     }
   }, [isListening]);
 
   const handleSendVoice = async () => {
-    if (!recordedAudio || isTranscribing || isProcessing) return;
-    setIsTranscribing(true);
-    setVoiceStatus('Uploading audio and transcribing with MOSES...');
-    setAiState('THINKING');
-    try {
-      const formData = new FormData();
-      const extension = recordedAudio.type.includes('mp4') ? 'mp4' : recordedAudio.type.includes('ogg') ? 'ogg' : 'webm';
-      formData.append('file', recordedAudio, `moses-voice-message.${extension}`);
-      const response = await fetch('/api/transcribe', { method: 'POST', body: formData });
-      const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || `Transcription failed (${response.status}).`);
-      const spokenMessage = typeof payload.text === 'string' ? payload.text.trim() : '';
-      if (!spokenMessage) throw new Error('No speech was detected in that recording. Please try again.');
-      setRecordedAudio(null);
-      setVoiceStatus('');
-      playCyberSound('send');
-      await handleExecutePrompt(spokenMessage);
-    } catch (error) {
-      console.error('MOSES voice transcription failed:', error);
-      setVoiceStatus(error instanceof Error ? error.message : 'Could not transcribe the audio. Please try again.');
-      setAiState('IDLE');
-    } finally {
-      setIsTranscribing(false);
-    }
+    const spokenMessage = voiceTranscript.trim();
+    if (!spokenMessage || isProcessing) return;
+    stopSpeechRecognition();
+    setIsListening(false);
+    setVoiceStatus('');
+    setVoiceTranscript('');
+    playCyberSound('send');
+    await handleExecutePrompt(spokenMessage);
   };
 
   // Execute Prompt / Chat with Moses
@@ -566,9 +526,11 @@ export function App() {
                 isListening={isListening}
                 onToggleVoice={handleToggleVoice}
                 isTranscribing={isTranscribing}
-                hasRecordedAudio={Boolean(recordedAudio)}
+                hasRecordedAudio={Boolean(voiceTranscript.trim())}
                 onSendVoice={handleSendVoice}
                 voiceStatus={voiceStatus}
+                voiceTranscript={voiceTranscript}
+                onVoiceTranscriptChange={setVoiceTranscript}
                 leads={leads}
                 warnings={warnings}
                 projects={projects}
@@ -586,6 +548,8 @@ export function App() {
                 onToggleVoice={handleToggleVoice}
                 onSendVoice={handleSendVoice}
                 voiceStatus={voiceStatus}
+                voiceTranscript={voiceTranscript}
+                onVoiceTranscriptChange={setVoiceTranscript}
               />
             )
           )}
