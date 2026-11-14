@@ -30,12 +30,71 @@ import { ClientDNAView } from './components/views/ClientDNAView';
 import { playCyberSound } from './utils/audio';
 import { speakText, startSpeechRecognition, stopSpeechRecognition } from './utils/speech';
 
+// Startup voice line: exactly one short announcement per completed interface boot.
+const LAST_GREETING_HOUR_KEY = 'moses.last-greeting-hour';
+let lastGreetedHourInMemory: string | null = null;
+
+function getStartupAnnouncement(messages: ChatMessage[]): string {
+  const now = new Date();
+  const hourKey = [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+    String(now.getHours()).padStart(2, '0')
+  ].join('-');
+
+  let lastGreetingHour = lastGreetedHourInMemory;
+  try {
+    lastGreetingHour = window.localStorage.getItem(LAST_GREETING_HOUR_KEY) || lastGreetingHour;
+  } catch {
+    // Fall back to the in-memory guard when browser storage is unavailable.
+  }
+
+  if (lastGreetingHour !== hourKey) {
+    lastGreetedHourInMemory = hourKey;
+    try {
+      window.localStorage.setItem(LAST_GREETING_HOUR_KEY, hourKey);
+    } catch {
+      // The in-memory guard still prevents duplicate announcements in this app instance.
+    }
+
+    const hour = now.getHours();
+    if (hour < 12) return 'Morning, Nate. Good to have you back.';
+    if (hour < 17) return 'Afternoon, Nate. Good to have you back.';
+    return 'Evening, Nate. Good to have you back.';
+  }
+
+  const lastUserMove = [...messages].reverse().find(message =>
+    (message.sender === 'NATE' || message.sender === 'USER') && message.text?.trim()
+  );
+
+  const lightLines = [
+    'You are back. The to-do list was starting to feel confident.',
+    'Welcome back. Let us make progress before another tab gets opened.',
+    'Good to have you here. One clear move beats twelve open tabs.',
+    'Back at it. I will keep the drama low and the output high.'
+  ];
+
+  if (lastUserMove && Math.random() < 0.65) {
+    const normalized = lastUserMove.text.replace(/[\\t\\r\\n]+/g, ' ').replace(/\\s{2,}/g, ' ').trim();
+    const firstSentence = normalized.match(/^.{1,180}?(?:[.!?](?=\\s|$)|$)/)?.[0] || normalized;
+    let command = firstSentence.replace(/[.!?]+$/, '').trim();
+    if (command.length > 88) command = command.slice(0, 85).replace(/\\s+\\S*$/, '').trimEnd() + '…';
+    if (command) return `Last move: your latest command was "${command}".`;
+  }
+
+  return lightLines[Math.floor(Math.random() * lightLines.length)];
+}
+
 export function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('COMMAND');
   const [isHomeMode, setIsHomeMode] = useState<boolean>(true);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [warnings, setWarnings] = useState<StrategicWarning[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const messagesRef = useRef<ChatMessage[]>(messages);
+  messagesRef.current = messages;
+  const startupAnnouncementPlayedRef = useRef(false);
   const [projects, setProjects] = useState<DigitalOpsProject[]>([]);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [clientDNA, setClientDNA] = useState<ClientDNA[]>([]);
@@ -578,12 +637,15 @@ export function App() {
   };
 
   const handleBootComplete = useCallback(() => {
+    if (startupAnnouncementPlayedRef.current) return;
+    startupAnnouncementPlayedRef.current = true;
     setIsBooting(false);
-    // Give the dashboard a short settle period before announcing ONLINE.
+
+    // Give the dashboard and its persisted records a moment to settle before speaking once.
     window.setTimeout(() => {
       setIsOnline(true);
       playCyberSound('online');
-      speakText('Good morning, Nate.');
+      void speakText(getStartupAnnouncement(messagesRef.current));
     }, 2000);
   }, []);
 
