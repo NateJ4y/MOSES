@@ -28,7 +28,7 @@ import { ClientDNAView } from './components/views/ClientDNAView';
 
 // Audio & Speech
 import { playCyberSound } from './utils/audio';
-import { speakText } from './utils/speech';
+import { speakText, startSpeechRecognition, stopSpeechRecognition } from './utils/speech';
 
 export function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('COMMAND');
@@ -44,6 +44,7 @@ export function App() {
   // AI & Voice State
   const [aiState, setAiState] = useState<'IDLE' | 'LISTENING' | 'THINKING' | 'RESPONDING'>('IDLE');
   const [isListening, setIsListening] = useState<boolean>(false);
+  const [isLiveMode, setIsLiveMode] = useState<boolean>(false);
   const [voiceStatus, setVoiceStatus] = useState<string>('');
   const [voiceTranscript, setVoiceTranscript] = useState<string>('');
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
@@ -248,8 +249,50 @@ export function App() {
 
   // No demo/sample loading is permitted.
 
-  // Record audio first; transcribe only after the user presses Stop.
+  // Live mode is an additional path; the existing Record mode remains unchanged.
   const handleToggleVoice = useCallback(async () => {
+    if (isLiveMode) {
+      if (isListening) {
+        setVoiceStatus('Stopping live transcription…');
+        stopSpeechRecognition();
+        return;
+      }
+
+      if (isStartingRecordingRef.current || isTranscribing || isProcessing) return;
+      setVoiceTranscript('');
+      setVoiceStatus('Starting live transcription…');
+
+      const started = startSpeechRecognition(
+        (transcript) => {
+          setVoiceTranscript(transcript);
+          setVoiceStatus('Live transcription · speak naturally, then press the mic to stop.');
+        },
+        () => {
+          setIsListening(false);
+          setAiState('IDLE');
+          setVoiceStatus('Live transcript ready · review or edit the text before sending.');
+        },
+        (error) => {
+          setIsListening(false);
+          setAiState('IDLE');
+          const message = error === 'not-allowed' || error === 'service-not-allowed'
+            ? 'Microphone permission was blocked. Check Brave site permissions and try again.'
+            : error === 'audio-capture'
+              ? 'The microphone could not be accessed. Check that it is connected and not in use by another app.'
+              : `Live transcription stopped: ${error}`;
+          setVoiceStatus(message);
+        }
+      );
+
+      if (started) {
+        setIsListening(true);
+        setAiState('LISTENING');
+        setVoiceStatus('Live transcription · your words will appear as you speak. Press the mic to stop.');
+        playCyberSound('blip');
+      }
+      return;
+    }
+
     const recorder = mediaRecorderRef.current;
 
     if (recorder && recorder.state === 'recording') {
@@ -360,7 +403,16 @@ export function App() {
     } finally {
       isStartingRecordingRef.current = false;
     }
-  }, [isTranscribing, isProcessing]);
+  }, [isLiveMode, isListening, isTranscribing, isProcessing]);
+
+  const handleToggleVoiceMode = (live: boolean) => {
+    if (isListening || isTranscribing || isProcessing) return;
+    setIsLiveMode(live);
+    setVoiceTranscript('');
+    setVoiceStatus(live
+      ? 'Live mode selected · words will appear as you speak.'
+      : 'Record mode selected · stop to transcribe, then review before sending.');
+  };
 
   const handleSendVoice = async () => {
     const spokenMessage = voiceTranscript.trim();
@@ -608,6 +660,8 @@ export function App() {
                 onExecutePrompt={handleExecutePrompt}
                 onNavigateTo={handleNavigate}
                 isListening={isListening}
+                isLiveMode={isLiveMode}
+                onToggleVoiceMode={handleToggleVoiceMode}
                 onToggleVoice={handleToggleVoice}
                 isTranscribing={isTranscribing}
                 hasRecordedAudio={Boolean(voiceTranscript.trim())}
