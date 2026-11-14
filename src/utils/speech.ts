@@ -164,36 +164,156 @@ export const speechRecognizer = {
   }
 };
 
-// Text to Speech for Moses voice output
-export function speakText(text: string, enabled = true, pitch = 0.95, rate = 1.05) {
-  if (!enabled || typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-  try {
-    window.speechSynthesis.cancel(); // Stop current speech
-    // Clean markdown formatting before speaking
-    const cleanText = text
-      .replace(/\*\*([^*]+)\*\*/g, '$1')
-      .replace(/\*([^*]+)\*/g, '$1')
-      .replace(/#+\s+/g, '')
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-      .replace(/`([^`]+)`/g, '$1')
-      .slice(0, 300); // Speak first 300 chars for concise audio response
+// Text to Speech for MOSES voice output.
+// Keep this independent from microphone capture/transcription so input remains unaffected.
+let speechQueue: string[] = [];
+let speechVoice: SpeechSynthesisVoice | null = null;
+let speechGeneration = 0;
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
+export function isSpeechSynthesisSupported(): boolean {
+  return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
+}
+
+export function stopSpeaking() {
+  if (!isSpeechSynthesisSupported()) return;
+  speechGeneration += 1;
+  speechQueue = [];
+  window.speechSynthesis.cancel();
+}
+
+function getPreferredSpeechVoice(): SpeechSynthesisVoice | null {
+  if (!isSpeechSynthesisSupported()) return null;
+  const voices = window.speechSynthesis.getVoices();
+  if (!voices.length) return speechVoice;
+
+  const englishVoices = voices.filter(voice => /^en(-|$)/i.test(voice.lang));
+  const preferred = englishVoices.find(voice =>
+    /natural|neural|google.*(uk|us).*english.*male|daniel|microsoft.*(guy|ryan|david)|male/i.test(voice.name)
+  ) || englishVoices.find(voice => /natural|neural|premium|enhanced/i.test(voice.name))
+    || englishVoices.find(voice => /google|microsoft/i.test(voice.name))
+    || englishVoices[0]
+    || voices[0];
+
+  speechVoice = preferred || null;
+  return speechVoice;
+}
+
+function cleanSpeechText(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, ' Code block omitted. ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/https?:\/\/\S+/g, ' link ')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s*[-*+]\s+/gm, '')
+    .replace(/^\s*\d+[.)]\s+/gm, '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/__([^_]+)__/g, '$1')
+    .replace(/_([^_]+)_/g, '$1')
+    .replace(/`([^\`]+)`/g, '$1')
+    .replace(/\|/g, ', ')
+    .replace(/\n{2,}/g, '. ')
+    .replace(/[\t\r\n]+/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+
+function splitSpeechIntoChunks(text: string, maxLength = 220): string[] {
+  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+  const chunks: string[] = [];
+  let current = '';
+
+  const pushLongSentence = (sentence: string) => {
+    const words = sentence.split(/\s+/);
+    let part = '';
+    for (const word of words) {
+      const candidate = part ? part + ' ' + word : word;
+      if (candidate.length > maxLength && part) {
+        chunks.push(part.trim());
+        part = word;
+      } else {
+        part = candidate;
+      }
+    }
+    if (part.trim()) chunks.push(part.trim());
+  };
+
+  for (const sentence of sentences) {
+    const cleanSentence = sentence.trim();
+    if (!cleanSentence) continue;
+    const candidate = current ? current + ' ' + cleanSentence : cleanSentence;
+    if (candidate.length <= maxLength) {
+      current = candidate;
+    } else {
+      if (current) chunks.push(current);
+      current = '';
+      if (cleanSentence.length > maxLength) pushLongSentence(cleanSentence);
+      else current = cleanSentence;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+export function speakText(text: string, enabled = true, pitch = 0.95, rate = 1.02) {
+  if (!enabled || !isSpeechSynthesisSupported()) return;
+  const cleanText = cleanSpeechText(text);
+  if (!cleanText) return;
+
+  stopSpeaking();
+  const generation = speechGeneration;
+  speechQueue = splitSpeechIntoChunks(cleanText);
+
+  const speakNextChunk = () => {
+    if (generation !== speechGeneration || !speechQueue.length) return;
+    const chunk = speechQueue.shift();
+    if (!chunk) return;
+
+    const utterance = new SpeechSynthesisUtterance(chunk);
     utterance.pitch = pitch;
     utterance.rate = rate;
+    utterance.lang = 'en-GB';
 
-    // Pick deep, crisp English voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v =>
-      v.lang.startsWith('en') && (v.name.includes('Male') || v.name.includes('Natural') || v.name.includes('Daniel') || v.name.includes('Google UK English Male'))
-    ) || voices.find(v => v.lang.startsWith('en'));
-
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
+    const voice = getPreferredSpeechVoice();
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang;
     }
 
+    utterance.onend = () => {
+      if (generation !== speechGeneration) return;
+      // A short handoff between utterances avoids Chromium dropping long queues.
+      window.setTimeout(speakNextChunk, 90);
+    };
+    utterance.onerror = (event) => {
+      console.warn('MOSES speech playback error:', event.error);
+      if (generation !== speechGeneration) return;
+      window.setTimeout(speakNextChunk, 120);
+    };
+
     window.speechSynthesis.speak(utterance);
-  } catch (err) {
-    console.warn('TTS playback error:', err);
+  };
+
+  // Voice lists can arrive asynchronously in Chromium-based browsers.
+  const voices = window.speechSynthesis.getVoices();
+  if (voices.length) {
+    getPreferredSpeechVoice();
+    speakNextChunk();
+  } else {
+    const onVoicesChanged = () => {
+      window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
+      if (generation !== speechGeneration) return;
+      getPreferredSpeechVoice();
+      speakNextChunk();
+    };
+    window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged);
+    window.setTimeout(() => {
+      window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
+      if (generation === speechGeneration && speechQueue.length) {
+        getPreferredSpeechVoice();
+        speakNextChunk();
+      }
+    }, 800);
   }
 }
