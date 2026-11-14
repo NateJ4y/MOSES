@@ -301,19 +301,18 @@ export function speakText(text: string, enabled = true, pitch = 0.95, rate = 1.0
     getPreferredSpeechVoice();
     speakNextChunk();
   } else {
-    const onVoicesChanged = () => {
-      window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
-      if (generation !== speechGeneration) return;
+    let started = false;
+    const startWhenReady = () => {
+      if (started || generation !== speechGeneration) return;
+      started = true;
+      window.speechSynthesis.removeEventListener('voiceschanged', startWhenReady);
       getPreferredSpeechVoice();
       speakNextChunk();
     };
-    window.speechSynthesis.addEventListener('voiceschanged', onVoicesChanged);
+    window.speechSynthesis.addEventListener('voiceschanged', startWhenReady);
     window.setTimeout(() => {
-      window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
-      if (generation === speechGeneration && speechQueue.length) {
-        getPreferredSpeechVoice();
-        speakNextChunk();
-      }
+      window.speechSynthesis.removeEventListener('voiceschanged', startWhenReady);
+      startWhenReady();
     }, 800);
   }
 }
