@@ -67,7 +67,7 @@ ${message}`;
           { role: 'system', content: SYSTEM_INSTRUCTION },
           { role: 'user', content: prompt },
         ],
-        max_completion_tokens: 4096,
+        max_completion_tokens: 1024,
       }),
       signal: AbortSignal.timeout(60_000),
     });
