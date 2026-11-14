@@ -3,7 +3,7 @@ import { getAuthenticatedUser, isSameOriginRequest } from "@/lib/db/server";
 
 export const dynamic = "force-dynamic";
 
-const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 const TRANSCRIPTION_MODEL = process.env.GROQ_TRANSCRIPTION_MODEL || "whisper-large-v3-turbo";
 
 export async function POST(req: Request) {
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "The audio recording is empty. Please record again." }, { status: 400 });
     }
     if (file.size > MAX_AUDIO_BYTES) {
-      return NextResponse.json({ error: "That recording is larger than the 25 MB upload limit. Please record a shorter message." }, { status: 413 });
+      return NextResponse.json({ error: "That recording is larger than the 4 MB upload limit. Please record a shorter message." }, { status: 413 });
     }
 
     const groqForm = new FormData();
