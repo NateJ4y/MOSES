@@ -20,36 +20,36 @@ export function startSpeechRecognition(
   onError: (err: string) => void
 ): boolean {
   if (!isSpeechRecognitionSupported()) {
-    onError('Speech recognition not supported in this browser.');
+    onError('Live speech recognition is not supported in this browser.');
     return false;
   }
 
   try {
     const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (recognitionInstance) {
-      try {
-        recognitionInstance.abort();
-      } catch (e) {}
+      try { recognitionInstance.abort(); } catch {}
     }
 
     recognitionInstance = new SpeechRecognitionClass();
-    // Keep the microphone session open across pauses; users stop it manually.
     recognitionInstance.continuous = true;
     recognitionInstance.interimResults = true;
     recognitionInstance.lang = 'en-US';
 
     recognitionInstance.onresult = (event: any) => {
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
+      let transcript = '';
+      let allFinal = true;
+      for (let i = 0; i < event.results.length; i++) {
         const result = event.results[i];
-        const transcript = result?.[0]?.transcript?.trim();
-        if (transcript) onResult(transcript, Boolean(result.isFinal));
+        const phrase = result?.[0]?.transcript || '';
+        transcript += phrase;
+        if (!result.isFinal) allFinal = false;
       }
+      onResult(transcript.trim(), allFinal);
     };
 
     recognitionInstance.onerror = (event: any) => {
       console.warn('Speech recognition error:', event.error);
       onError(event.error || 'Microphone capture error');
-      onEnd();
     };
 
     recognitionInstance.onend = () => {
@@ -60,7 +60,7 @@ export function startSpeechRecognition(
     return true;
   } catch (err: any) {
     console.error('Failed to start speech recognition:', err);
-    onError(err.message || 'Could not access microphone');
+    onError(err.message || 'Could not start live speech recognition.');
     return false;
   }
 }
