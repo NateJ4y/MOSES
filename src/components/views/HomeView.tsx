@@ -65,7 +65,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const message = voiceTranscript.trim() || inputVal.trim();
-    if (!message || isTranscribing) return;
+    if (!message || isTranscribing || isListening) return;
     playCyberSound('send');
     if (voiceTranscript.trim()) onSendVoice();
     else onExecutePrompt(message);
@@ -193,7 +193,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {/* Send Button */}
               <button
                 type="submit"
-                disabled={(!inputVal.trim() && !voiceTranscript.trim()) || isTranscribing}
+                disabled={(!inputVal.trim() && !voiceTranscript.trim()) || isTranscribing || isListening}
                 className="p-2.5 rounded-full bg-black text-white hover:bg-zinc-800 disabled:opacity-25 disabled:hover:bg-black disabled:cursor-not-allowed transition-all shadow-sm font-bold cursor-pointer"
                 title="Send Command (Enter)"
               >
