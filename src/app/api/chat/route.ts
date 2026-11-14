@@ -78,8 +78,8 @@ export async function POST(req: Request) {
     console.error("MOSES Chat API error:", error);
     return NextResponse.json({
       reply: "MOSES Core could not process the command. No unverified answer was fabricated.",
-      provider: "gemini",
-      model: "gemini-3.8-flash",
+      provider: "groq",
+      model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
       status: "ERROR",
       timestamp: new Date().toISOString()
     }, { status: 500 });
