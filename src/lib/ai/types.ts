@@ -26,7 +26,7 @@ export const MOSES_COLLECTION_NAMES = [
 ] as const;
 
 export type MosesCollection = (typeof MOSES_COLLECTION_NAMES)[number];
-export type CollectionLoadStatus = 'loaded' | 'empty' | 'unavailable' | 'truncated';
+export type CollectionLoadStatus = 'loaded' | 'empty' | 'unavailable' | 'truncated' | 'not_queried';
 
 export interface MosesCollectionInput {
   records?: unknown[];
@@ -51,6 +51,7 @@ export interface MosesContext {
     emptyCollections: number;
     unavailableCollections: number;
     truncatedCollections: number;
+    notQueriedCollections: number;
     totalRecords: number;
   };
 }
