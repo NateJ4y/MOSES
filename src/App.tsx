@@ -28,7 +28,7 @@ import { ClientDNAView } from './components/views/ClientDNAView';
 
 // Audio & Speech
 import { playCyberSound } from './utils/audio';
-import { speakText, startSpeechRecognition, stopSpeechRecognition } from './utils/speech';
+import { speakText } from './utils/speech';
 
 export function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('COMMAND');
@@ -48,6 +48,18 @@ export function App() {
   const [voiceTranscript, setVoiceTranscript] = useState<string>('');
   const [isTranscribing, setIsTranscribing] = useState<boolean>(false);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const isStartingRecordingRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      mediaRecorderRef.current?.stop();
+      mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+    };
+  }, []);
 
 
   // UI state
@@ -224,57 +236,130 @@ export function App() {
       next.push({
         id: 'derived-project-capacity',
         title: 'HIGH-SCOPE PROJECT',
-        code: 'CAPACITY_RISK',
-        severity: 'MEDIUM',
-        description: 'At least one real project is marked HIGH capacity impact.',
-        recommendation: 'Review scope, deadline and task load before committing additional work.'
-      });
-    }
-    setWarnings(next);
-    void now;
-  }, [leads, projects]);
+        code: 'CA  // Record audio first; transcribe only after the user presses Stop.
+  const handleToggleVoice = useCallback(async () => {
+    const recorder = mediaRecorderRef.current;
 
-  // No demo/sample loading is permitted.
-
-  // Live speech recognition: keep an editable transcript in the command input.
-  const handleToggleVoice = useCallback(() => {
-    if (isListening) {
-      stopSpeechRecognition();
-      setIsListening(false);
-      setAiState('IDLE');
-      setVoiceStatus('Voice input stopped · review or edit your transcript before sending.');
+    if (recorder && recorder.state === 'recording') {
+      setVoiceStatus('Stopping recording · preparing transcription…');
+      recorder.stop();
       return;
     }
 
+    if (isStartingRecordingRef.current || isTranscribing || isProcessing) return;
+    isStartingRecordingRef.current = true;
     setVoiceTranscript('');
-    setVoiceStatus('Listening · your words will appear here as you speak.');
-    const started = startSpeechRecognition(
-      (text) => {
-        setVoiceTranscript(text);
-        setVoiceStatus('Listening · live transcription');
-      },
-      () => {
-        setIsListening(false);
-        setAiState('IDLE');
-        setVoiceStatus((current) => current.startsWith('Listening')
-          ? 'Voice input stopped · review or edit your transcript before sending.'
-          : current);
-      },
-      (error) => {
-        setIsListening(false);
-        setAiState('IDLE');
-        setVoiceStatus(error);
-      }
-    );
+    setVoiceStatus('Requesting microphone access…');
 
-    if (started) {
+    try {
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        throw new Error('Audio recording is not supported in this browser. Please try Chrome or update Brave.');
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
+      const mimeType = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/ogg;codecs=opus'
+      ].find(type => MediaRecorder.isTypeSupported(type));
+
+      const activeRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      audioChunksRef.current = [];
+      mediaRecorderRef.current = activeRecorder;
+
+      activeRecorder.ondataavailable = (event: BlobEvent) => {
+        if (event.data && event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+
+      activeRecorder.onerror = () => {
+        setVoiceStatus('Recording failed. Please try again.');
+        setIsListening(false);
+        setAiState('IDLE');
+        stream.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current = null;
+        mediaRecorderRef.current = null;
+      };
+
+      activeRecorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        mediaStreamRef.current = null;
+        mediaRecorderRef.current = null;
+
+        const audioBlob = new Blob(audioChunksRef.current, {
+          type: activeRecorder.mimeType || 'audio/webm'
+        });
+        audioChunksRef.current = [];
+        setIsListening(false);
+        setAiState('IDLE');
+
+        if (!audioBlob.size) {
+          setVoiceStatus('No audio was captured. Please record again.');
+          return;
+        }
+
+        setIsTranscribing(true);
+        setVoiceStatus('Recording saved · transcribing your speech…');
+
+        try {
+          const extension = audioBlob.type.includes('mp4') ? 'mp4'
+            : audioBlob.type.includes('ogg') ? 'ogg' : 'webm';
+          const formData = new FormData();
+          formData.append('file', new File([audioBlob], `moses-recording.${extension}`, { type: audioBlob.type }));
+
+          const response = await fetch('/api/transcribe', {
+            method: 'POST',
+            body: formData
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(result?.error || `Transcription failed (${response.status}).`);
+          }
+          const transcript = typeof result.text === 'string' ? result.text.trim() : '';
+          if (!transcript) throw new Error('No speech was detected. Please record again.');
+
+          setVoiceTranscript(transcript);
+          setVoiceStatus('Transcription complete · review or edit the text before sending.');
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Could not transcribe this recording.';
+          setVoiceStatus(message);
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+
+      activeRecorder.start();
       setIsListening(true);
       setAiState('LISTENING');
+      setVoiceStatus('Recording · click the microphone again when you are finished.');
       playCyberSound('blip');
-    } else {
-      setVoiceStatus('Live speech recognition is not available. Try enabling speech recognition in Brave or use Chrome.');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not start microphone recording.';
+      setVoiceStatus(message);
+      setIsListening(false);
+      setAiState('IDLE');
+      mediaStreamRef.current?.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    } finally {
+      isStartingRecordingRef.current = false;
     }
-  }, [isListening]);
+  }, [isTranscribing, isProcessing]);
+
+  const handleSendVoice = async () => {
+    const spokenMessage = voiceTranscript.trim();
+    if (!spokenMessage || isProcessing || isTranscribing || isListening) return;
+    setVoiceStatus('');
+    setVoiceTranscript('');
+    playCyberSound('send');
+    await handleExecutePrompt(spokenMessage);
+  };
+
+ [isListening]);
 
   const handleSendVoice = async () => {
     const spokenMessage = voiceTranscript.trim();
