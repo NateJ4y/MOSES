@@ -63,7 +63,7 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const message = voiceTranscript.trim() || inputVal.trim();
-    if (!message || isProcessing || isTranscribing) return;
+    if (!message || isProcessing || isTranscribing || isListening) return;
     playCyberSound('send');
     if (voiceTranscript.trim()) onSendVoice();
     else onSendMessage(message);
