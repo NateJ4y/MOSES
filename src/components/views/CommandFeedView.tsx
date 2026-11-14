@@ -27,6 +27,8 @@ interface CommandFeedViewProps {
   onToggleVoice: () => void;
   onSendVoice: () => void;
   voiceStatus: string;
+  voiceTranscript: string;
+  onVoiceTranscriptChange: (value: string) => void;
 }
 
 export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
@@ -38,7 +40,9 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
   hasRecordedAudio,
   onToggleVoice,
   onSendVoice,
-  voiceStatus
+  voiceStatus,
+  voiceTranscript,
+  onVoiceTranscriptChange
 }) => {
   const [inputVal, setInputVal] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -54,14 +58,11 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (hasRecordedAudio) {
-      if (isTranscribing || isProcessing) return;
-      onSendVoice();
-      return;
-    }
-    if (!inputVal.trim() || isProcessing || isTranscribing) return;
+    const message = voiceTranscript.trim() || inputVal.trim();
+    if (!message || isProcessing || isTranscribing) return;
     playCyberSound('send');
-    onSendMessage(inputVal);
+    if (voiceTranscript.trim()) onSendVoice();
+    else onSendMessage(message);
     setInputVal('');
   };
 
@@ -277,12 +278,12 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
             <Terminal size={17} />
           </div>
 
-          <input
-            type="text"
-            value={inputVal}
-            onChange={(e) => setInputVal(e.target.value)}
-            placeholder={isListening ? "Recording... click the microphone to finish" : isTranscribing ? "Transcribing your voice message..." : "Ask Moses anything or type a directive..."}
-            className="flex-1 bg-transparent py-2.5 px-2 text-xs sm:text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none font-medium"
+          <textarea
+            rows={1}
+            value={voiceTranscript || inputVal}
+            onChange={(e) => voiceTranscript ? onVoiceTranscriptChange(e.target.value) : setInputVal(e.target.value)}
+            placeholder={isListening ? "Listening... your words will appear here" : isTranscribing ? "Preparing your message..." : "Ask Moses anything or type a directive..."}
+            className="flex-1 min-h-10 max-h-32 resize-y bg-transparent py-2.5 px-2 text-xs sm:text-sm text-zinc-900 placeholder:text-zinc-400 focus:outline-none font-medium"
           />
 
           <div className="flex items-center gap-1.5 pr-1">
@@ -305,7 +306,7 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
 
             <button
               type="submit"
-              disabled={(!inputVal.trim() && !hasRecordedAudio) || isProcessing || isTranscribing || isListening}
+              disabled={(!inputVal.trim() && !voiceTranscript.trim()) || isProcessing || isTranscribing || isListening}
               className="p-2.5 rounded-xl bg-black hover:bg-zinc-800 text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-xs cursor-pointer"
             >
               {isTranscribing ? <span className="text-[10px] font-semibold px-1">...</span> : <Send size={15} />}
