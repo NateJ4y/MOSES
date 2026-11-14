@@ -10,6 +10,8 @@ export interface SpeechRecognitionResultState {
 let recognitionInstance: any = null;
 let recognitionActive = false;
 let recognitionSession = 0;
+let accumulatedFinalTranscript = '';
+
 let activeCallbacks: {
   onResult: (text: string, isFinal: boolean) => void;
   onEnd: () => void;
@@ -34,14 +36,22 @@ function launchRecognitionSession(session: number): boolean {
 
     instance.onresult = (event: any) => {
       if (session !== recognitionSession || !activeCallbacks) return;
-      let transcript = '';
-      let allFinal = true;
-      for (let i = 0; i < event.results.length; i++) {
+      let interimTranscript = '';
+      const firstChangedResult = typeof event.resultIndex === 'number' ? event.resultIndex : 0;
+
+      for (let i = firstChangedResult; i < event.results.length; i++) {
         const result = event.results[i];
-        transcript += result?.[0]?.transcript || '';
-        if (!result.isFinal) allFinal = false;
+        const phrase = result?.[0]?.transcript?.trim() || '';
+        if (!phrase) continue;
+        if (result.isFinal) {
+          accumulatedFinalTranscript = [accumulatedFinalTranscript, phrase].filter(Boolean).join(' ');
+        } else {
+          interimTranscript = [interimTranscript, phrase].filter(Boolean).join(' ');
+        }
       }
-      activeCallbacks.onResult(transcript.trim(), allFinal);
+
+      const combinedTranscript = [accumulatedFinalTranscript, interimTranscript].filter(Boolean).join(' ').trim();
+      activeCallbacks.onResult(combinedTranscript, !interimTranscript);
     };
 
     instance.onerror = (event: any) => {
@@ -55,7 +65,11 @@ function launchRecognitionSession(session: number): boolean {
       const fatalErrors = ['not-allowed', 'service-not-allowed', 'audio-capture'];
       if (fatalErrors.includes(error)) {
         recognitionActive = false;
-        activeCallbacks.onError(error);
+        const callbacks = activeCallbacks;
+        activeCallbacks = null;
+        recognitionInstance = null;
+        callbacks?.onError(error);
+        try { instance.abort(); } catch {}
       }
     };
 
@@ -111,6 +125,7 @@ export function startSpeechRecognition(
   const session = recognitionSession;
   try { recognitionInstance?.abort(); } catch {}
 
+  accumulatedFinalTranscript = '';
   activeCallbacks = { onResult, onEnd, onError };
   recognitionActive = true;
   return launchRecognitionSession(session);
