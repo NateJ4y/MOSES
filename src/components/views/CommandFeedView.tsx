@@ -26,7 +26,7 @@ interface CommandFeedViewProps {
   hasRecordedAudio: boolean;
   onToggleVoice: () => void;
   onSendVoice: () => void;
-  transcript: string;
+  voiceStatus: string;
 }
 
 export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
@@ -38,7 +38,7 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
   hasRecordedAudio,
   onToggleVoice,
   onSendVoice,
-  transcript
+  voiceStatus
 }) => {
   const [inputVal, setInputVal] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -51,12 +51,6 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages, isProcessing]);
-
-  useEffect(() => {
-    if (transcript) {
-      setInputVal(transcript);
-    }
-  }, [transcript]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -272,9 +266,7 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
           ))}
         </div>
 
-        {isListening && <p className="mb-2 px-2 text-[11px] font-medium text-rose-600 animate-pulse">Recording audio · click the microphone when you're finished.</p>}
-        {hasRecordedAudio && !isTranscribing && <p className="mb-2 px-2 text-[11px] font-medium text-emerald-700">Voice message ready · press Send to transcribe and submit it.</p>}
-        {isTranscribing && <p className="mb-2 px-2 text-[11px] font-medium text-zinc-500">Uploading audio and transcribing with MOSES...</p>}
+        {voiceStatus && <p className={`mb-2 px-2 text-[11px] font-medium ${isListening ? 'text-rose-600 animate-pulse' : hasRecordedAudio ? 'text-emerald-700' : isTranscribing ? 'text-zinc-500' : 'text-rose-600'}`}>{voiceStatus}</p>}
 
         {/* Input Form */}
         <form
