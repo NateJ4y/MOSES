@@ -236,7 +236,19 @@ export function App() {
       next.push({
         id: 'derived-project-capacity',
         title: 'HIGH-SCOPE PROJECT',
-        code: 'CA  // Record audio first; transcribe only after the user presses Stop.
+        code: 'CAPACITY_RISK',
+        severity: 'MEDIUM',
+        description: 'At least one real project is marked HIGH capacity impact.',
+        recommendation: 'Review scope, deadline and task load before committing additional work.'
+      });
+    }
+    setWarnings(next);
+    void now;
+  }, [leads, projects]);
+
+  // No demo/sample loading is permitted.
+
+  // Record audio first; transcribe only after the user presses Stop.
   const handleToggleVoice = useCallback(async () => {
     const recorder = mediaRecorderRef.current;
 
@@ -353,19 +365,6 @@ export function App() {
   const handleSendVoice = async () => {
     const spokenMessage = voiceTranscript.trim();
     if (!spokenMessage || isProcessing || isTranscribing || isListening) return;
-    setVoiceStatus('');
-    setVoiceTranscript('');
-    playCyberSound('send');
-    await handleExecutePrompt(spokenMessage);
-  };
-
- [isListening]);
-
-  const handleSendVoice = async () => {
-    const spokenMessage = voiceTranscript.trim();
-    if (!spokenMessage || isProcessing) return;
-    stopSpeechRecognition();
-    setIsListening(false);
     setVoiceStatus('');
     setVoiceTranscript('');
     playCyberSound('send');
