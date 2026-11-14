@@ -165,154 +165,143 @@ export const speechRecognizer = {
 };
 
 // Text to Speech for MOSES voice output.
-// Keep this independent from microphone capture/transcription so input remains unaffected.
-let speechQueue: string[] = [];
-let speechVoice: SpeechSynthesisVoice | null = null;
+// Dedicated ElevenLabs speech is requested server-side; browser speech remains the fallback.
 let speechGeneration = 0;
+let activeAudio: HTMLAudioElement | null = null;
+let activeAudioUrl: string | null = null;
+let activeSpeechRequest: AbortController | null = null;
 
 export function isSpeechSynthesisSupported(): boolean {
   return typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
 }
 
 export function stopSpeaking() {
-  if (!isSpeechSynthesisSupported()) return;
   speechGeneration += 1;
-  speechQueue = [];
-  window.speechSynthesis.cancel();
+  activeSpeechRequest?.abort();
+  activeSpeechRequest = null;
+  if (activeAudio) {
+    activeAudio.pause();
+    activeAudio.src = '';
+    activeAudio = null;
+  }
+  if (activeAudioUrl) {
+    URL.revokeObjectURL(activeAudioUrl);
+    activeAudioUrl = null;
+  }
+  if (isSpeechSynthesisSupported()) window.speechSynthesis.cancel();
 }
 
 function getPreferredSpeechVoice(): SpeechSynthesisVoice | null {
   if (!isSpeechSynthesisSupported()) return null;
   const voices = window.speechSynthesis.getVoices();
-  if (!voices.length) return speechVoice;
-
   const englishVoices = voices.filter(voice => /^en(-|$)/i.test(voice.lang));
-  const preferred = englishVoices.find(voice =>
+  return englishVoices.find(voice =>
     /natural|neural|google.*(uk|us).*english.*male|daniel|microsoft.*(guy|ryan|david)|male/i.test(voice.name)
   ) || englishVoices.find(voice => /natural|neural|premium|enhanced/i.test(voice.name))
     || englishVoices.find(voice => /google|microsoft/i.test(voice.name))
     || englishVoices[0]
-    || voices[0];
-
-  speechVoice = preferred || null;
-  return speechVoice;
+    || voices[0]
+    || null;
 }
 
 function cleanSpeechText(text: string): string {
   return text
-    .replace(/```[\s\S]*?```/g, ' Code block omitted. ')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/https?:\/\/\S+/g, ' link ')
-    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
-    .replace(/^\s*[-*+]\s+/gm, '')
-    .replace(/^\s*\d+[.)]\s+/gm, '')
-    .replace(/\*\*([^*]+)\*\*/g, '$1')
-    .replace(/\*([^*]+)\*/g, '$1')
+    .replace(/```[\\s\\S]*?```/g, ' Code block omitted. ')
+    .replace(/!\\[[^\\]]*\\]\\([^)]*\\)/g, ' ')
+    .replace(/\\[([^\\]]+)\\]\\([^)]*\\)/g, '$1')
+    .replace(/https?:\\/\\/\\S+/g, ' link ')
+    .replace(/^\\s{0,3}#{1,6}\\s+/gm, '')
+    .replace(/^\\s*[-*+]\\s+/gm, '')
+    .replace(/^\\s*\\d+[.)]\\s+/gm, '')
+    .replace(/\\*\\*([^*]+)\\*\\*/g, '$1')
+    .replace(/\\*([^*]+)\\*/g, '$1')
     .replace(/__([^_]+)__/g, '$1')
     .replace(/_([^_]+)_/g, '$1')
-    .replace(/`([^\`]+)`/g, '$1')
-    .replace(/\|/g, ', ')
-    .replace(/\n{2,}/g, '. ')
-    .replace(/[\t\r\n]+/g, ' ')
-    .replace(/\s{2,}/g, ' ')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\\|/g, ', ')
+    .replace(/\\n{2,}/g, '. ')
+    .replace(/[\\t\\r\\n]+/g, ' ')
+    .replace(/\\s{2,}/g, ' ')
     .trim();
 }
 
-function splitSpeechIntoChunks(text: string, maxLength = 220): string[] {
-  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
-  const chunks: string[] = [];
-  let current = '';
-
-  const pushLongSentence = (sentence: string) => {
-    const words = sentence.split(/\s+/);
-    let part = '';
-    for (const word of words) {
-      const candidate = part ? part + ' ' + word : word;
-      if (candidate.length > maxLength && part) {
-        chunks.push(part.trim());
-        part = word;
-      } else {
-        part = candidate;
-      }
-    }
-    if (part.trim()) chunks.push(part.trim());
-  };
-
-  for (const sentence of sentences) {
-    const cleanSentence = sentence.trim();
-    if (!cleanSentence) continue;
-    const candidate = current ? current + ' ' + cleanSentence : cleanSentence;
-    if (candidate.length <= maxLength) {
-      current = candidate;
+function speakWithBrowser(text: string, generation: number, pitch = 0.95, rate = 1.02) {
+  if (!isSpeechSynthesisSupported() || generation !== speechGeneration) return;
+  const chunks = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+  let index = 0;
+  const speakNext = () => {
+    if (generation !== speechGeneration || index >= chunks.length) return;
+    const utterance = new SpeechSynthesisUtterance(chunks[index++].trim());
+    utterance.pitch = pitch;
+    utterance.rate = rate;
+    const voice = getPreferredSpeechVoice();
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang;
     } else {
-      if (current) chunks.push(current);
-      current = '';
-      if (cleanSentence.length > maxLength) pushLongSentence(cleanSentence);
-      else current = cleanSentence;
+      utterance.lang = 'en-GB';
     }
-  }
-  if (current) chunks.push(current);
-  return chunks;
+    utterance.onend = () => {
+      if (generation === speechGeneration) window.setTimeout(speakNext, 90);
+    };
+    utterance.onerror = (event) => {
+      console.warn('MOSES browser speech fallback error:', event.error);
+      if (generation === speechGeneration) window.setTimeout(speakNext, 120);
+    };
+    window.speechSynthesis.speak(utterance);
+  };
+  speakNext();
 }
 
-export function speakText(text: string, enabled = true, pitch = 0.95, rate = 1.02) {
-  if (!enabled || !isSpeechSynthesisSupported()) return;
+export async function speakText(text: string, enabled = true, pitch = 0.95, rate = 1.02) {
+  if (!enabled || typeof window === 'undefined') return;
   const cleanText = cleanSpeechText(text);
   if (!cleanText) return;
 
   stopSpeaking();
   const generation = speechGeneration;
-  speechQueue = splitSpeechIntoChunks(cleanText);
+  const controller = new AbortController();
+  activeSpeechRequest = controller;
 
-  const speakNextChunk = () => {
-    if (generation !== speechGeneration || !speechQueue.length) return;
-    const chunk = speechQueue.shift();
-    if (!chunk) return;
+  try {
+    const response = await fetch('/api/speech', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: cleanText }),
+      signal: controller.signal,
+    });
 
-    const utterance = new SpeechSynthesisUtterance(chunk);
-    utterance.pitch = pitch;
-    utterance.rate = rate;
-    utterance.lang = 'en-GB';
-
-    const voice = getPreferredSpeechVoice();
-    if (voice) {
-      utterance.voice = voice;
-      utterance.lang = voice.lang;
+    if (!response.ok) {
+      const detail = await response.json().catch(() => null) as { error?: string } | null;
+      throw new Error(detail?.error || `ElevenLabs speech request failed (${response.status}).`);
     }
 
-    utterance.onend = () => {
-      if (generation !== speechGeneration) return;
-      // A short handoff between utterances avoids Chromium dropping long queues.
-      window.setTimeout(speakNextChunk, 90);
-    };
-    utterance.onerror = (event) => {
-      console.warn('MOSES speech playback error:', event.error);
-      if (generation !== speechGeneration) return;
-      window.setTimeout(speakNextChunk, 120);
-    };
+    const audioBlob = await response.blob();
+    if (generation !== speechGeneration) return;
+    if (!audioBlob.size) throw new Error('ElevenLabs returned an empty audio file.');
 
-    window.speechSynthesis.speak(utterance);
-  };
-
-  // Voice lists can arrive asynchronously in Chromium-based browsers.
-  const voices = window.speechSynthesis.getVoices();
-  if (voices.length) {
-    getPreferredSpeechVoice();
-    speakNextChunk();
-  } else {
-    let started = false;
-    const startWhenReady = () => {
-      if (started || generation !== speechGeneration) return;
-      started = true;
-      window.speechSynthesis.removeEventListener('voiceschanged', startWhenReady);
-      getPreferredSpeechVoice();
-      speakNextChunk();
+    activeAudioUrl = URL.createObjectURL(audioBlob);
+    const audio = new Audio(activeAudioUrl);
+    activeAudio = audio;
+    audio.onended = () => {
+      if (generation !== speechGeneration) return;
+      activeAudio = null;
+      if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
+      activeAudioUrl = null;
     };
-    window.speechSynthesis.addEventListener('voiceschanged', startWhenReady);
-    window.setTimeout(() => {
-      window.speechSynthesis.removeEventListener('voiceschanged', startWhenReady);
-      startWhenReady();
-    }, 800);
+    audio.onerror = () => {
+      if (generation !== speechGeneration) return;
+      console.warn('MOSES ElevenLabs audio playback failed; using browser speech.');
+      activeAudio = null;
+      if (activeAudioUrl) URL.revokeObjectURL(activeAudioUrl);
+      activeAudioUrl = null;
+      speakWithBrowser(cleanText, generation, pitch, rate);
+    };
+    await audio.play();
+  } catch (error) {
+    if (generation !== speechGeneration || (error instanceof Error && error.name === 'AbortError')) return;
+    console.warn('MOSES ElevenLabs unavailable; using browser speech fallback:', error);
+    activeSpeechRequest = null;
+    speakWithBrowser(cleanText, generation, pitch, rate);
   }
 }
