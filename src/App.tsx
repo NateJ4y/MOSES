@@ -45,17 +45,18 @@ function getStartupAnnouncement(messages: ChatMessage[], profileName: string): s
     String(now.getHours()).padStart(2, '0')
   ].join('-');
 
-  let lastGreetingHour = lastGreetedHourInMemory;
+  const greetingStorageKey = `${LAST_GREETING_HOUR_KEY}.${profileName.trim().toLowerCase() || 'guest'}`;
+  let lastGreetingHour = lastGreetedHourInMemory === `${greetingStorageKey}:${hourKey}` ? hourKey : null;
   try {
-    lastGreetingHour = window.localStorage.getItem(LAST_GREETING_HOUR_KEY) || lastGreetingHour;
+    lastGreetingHour = window.localStorage.getItem(greetingStorageKey) || lastGreetingHour;
   } catch {
     // Fall back to the in-memory guard when browser storage is unavailable.
   }
 
   if (lastGreetingHour !== hourKey) {
-    lastGreetedHourInMemory = hourKey;
+    lastGreetedHourInMemory = `${greetingStorageKey}:${hourKey}`;
     try {
-      window.localStorage.setItem(LAST_GREETING_HOUR_KEY, hourKey);
+      window.localStorage.setItem(greetingStorageKey, hourKey);
     } catch {
       // The in-memory guard still prevents duplicate announcements in this app instance.
     }
@@ -120,9 +121,9 @@ export function App() {
             ? user.user_metadata.moses_name.trim()
             : '';
           const suggestedName = typeof user.user_metadata?.full_name === 'string'
-            ? user.user_metadata.full_name.trim().split(/\\s+/)[0]
+            ? user.user_metadata.full_name.trim().split(/\s+/)[0]
             : typeof user.user_metadata?.name === 'string'
-              ? String(user.user_metadata.name).trim().split(/\\s+/)[0]
+              ? String(user.user_metadata.name).trim().split(/\s+/)[0]
               : '';
           if (savedName) {
             setProfileName(savedName);
@@ -143,7 +144,7 @@ export function App() {
   }, []);
 
   const handleSaveProfileName = async () => {
-    const cleanName = nameDraft.trim().replace(/\\s+/g, ' ');
+    const cleanName = nameDraft.trim().replace(/\s+/g, ' ');
     if (!cleanName || cleanName.length > 40) {
       setNameSetupError('Enter a name between 1 and 40 characters.');
       return;
@@ -797,6 +798,7 @@ export function App() {
           isRightPanelOpen={isRightPanelOpen}
           onToggleRightPanel={() => setIsRightPanelOpen(!isRightPanelOpen)}
           isOnline={isOnline}
+          profileName={profileName}
           onNavigateHome={() => {
             playCyberSound('click');
             setActiveSection('COMMAND');
