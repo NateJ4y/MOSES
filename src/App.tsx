@@ -29,12 +29,14 @@ import { ClientDNAView } from './components/views/ClientDNAView';
 // Audio & Speech
 import { playCyberSound } from './utils/audio';
 import { speakText, startSpeechRecognition, stopSpeechRecognition } from './utils/speech';
+import { createClient as createSupabaseClient } from './lib/supabase/client';
 
 // Startup voice line: exactly one short announcement per completed interface boot.
 const LAST_GREETING_HOUR_KEY = 'moses.last-greeting-hour';
 let lastGreetedHourInMemory: string | null = null;
 
-function getStartupAnnouncement(messages: ChatMessage[]): string {
+function getStartupAnnouncement(messages: ChatMessage[], profileName: string): string {
+  const name = profileName.trim() || 'there';
   const now = new Date();
   const hourKey = [
     now.getFullYear(),
@@ -59,9 +61,9 @@ function getStartupAnnouncement(messages: ChatMessage[]): string {
     }
 
     const hour = now.getHours();
-    if (hour < 12) return 'Morning, Nate. Good to have you back.';
-    if (hour < 17) return 'Afternoon, Nate. Good to have you back.';
-    return 'Evening, Nate. Good to have you back.';
+    if (hour < 12) return `Morning, ${name}. Good to have you back.`;
+    if (hour < 17) return `Afternoon, ${name}. Good to have you back.`;
+    return `Evening, ${name}. Good to have you back.`;
   }
 
   const lastUserMove = [...messages].reverse().find(message =>
@@ -80,14 +82,21 @@ function getStartupAnnouncement(messages: ChatMessage[]): string {
     const firstSentence = normalized.match(/^.{1,180}?(?:[.!?](?=\s|$)|$)/)?.[0] || normalized;
     let command = firstSentence.replace(/[.!?]+$/, '').trim();
     if (command.length > 88) command = command.slice(0, 85).replace(/\s+\S*$/, '').trimEnd() + '…';
-    if (command) return `Last move: your latest command was "${command}".`;
+    if (command) return `Last move, ${name}: your latest command was "${command}".`;
   }
 
-  return lightLines[Math.floor(Math.random() * lightLines.length)];
+  const lightLine = lightLines[Math.floor(Math.random() * lightLines.length)];
+  return `${name}, ${lightLine.charAt(0).toLowerCase()}${lightLine.slice(1)}`;
 }
 
 export function App() {
   const [activeSection, setActiveSection] = useState<NavSection>('COMMAND');
+  const [profileName, setProfileName] = useState('');
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [needsNameSetup, setNeedsNameSetup] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [nameSetupError, setNameSetupError] = useState('');
   const [isHomeMode, setIsHomeMode] = useState<boolean>(true);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [warnings, setWarnings] = useState<StrategicWarning[]>([]);
@@ -95,6 +104,66 @@ export function App() {
   const messagesRef = useRef<ChatMessage[]>(messages);
   messagesRef.current = messages;
   const startupAnnouncementPlayedRef = useRef(false);
+
+  // The preferred name is stored in this authenticated Supabase user's metadata.
+  // Existing accounts without one are prompted once after their next sign-in.
+  useEffect(() => {
+    let cancelled = false;
+    const loadProfile = async () => {
+      try {
+        const supabase = createSupabaseClient();
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        if (cancelled) return;
+        if (user) {
+          const savedName = typeof user.user_metadata?.moses_name === 'string'
+            ? user.user_metadata.moses_name.trim()
+            : '';
+          const suggestedName = typeof user.user_metadata?.full_name === 'string'
+            ? user.user_metadata.full_name.trim().split(/\\s+/)[0]
+            : typeof user.user_metadata?.name === 'string'
+              ? String(user.user_metadata.name).trim().split(/\\s+/)[0]
+              : '';
+          if (savedName) {
+            setProfileName(savedName);
+            setNeedsNameSetup(false);
+          } else {
+            setNameDraft(suggestedName);
+            setNeedsNameSetup(true);
+          }
+        }
+      } catch (error) {
+        console.error('MOSES profile could not be loaded:', error);
+      } finally {
+        if (!cancelled) setProfileLoading(false);
+      }
+    };
+    void loadProfile();
+    return () => { cancelled = true; };
+  }, []);
+
+  const handleSaveProfileName = async () => {
+    const cleanName = nameDraft.trim().replace(/\\s+/g, ' ');
+    if (!cleanName || cleanName.length > 40) {
+      setNameSetupError('Enter a name between 1 and 40 characters.');
+      return;
+    }
+    setSavingName(true);
+    setNameSetupError('');
+    try {
+      const supabase = createSupabaseClient();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError || !user) throw userError || new Error('Your session has expired. Please sign in again.');
+      const { error } = await supabase.auth.updateUser({ data: { moses_name: cleanName } });
+      if (error) throw error;
+      setProfileName(cleanName);
+      setNeedsNameSetup(false);
+    } catch (error) {
+      setNameSetupError(error instanceof Error ? error.message : 'Could not save your name. Please try again.');
+    } finally {
+      setSavingName(false);
+    }
+  };
   const [projects, setProjects] = useState<DigitalOpsProject[]>([]);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [clientDNA, setClientDNA] = useState<ClientDNA[]>([]);
@@ -645,9 +714,30 @@ export function App() {
     window.setTimeout(() => {
       setIsOnline(true);
       playCyberSound('online');
-      void speakText(getStartupAnnouncement(messagesRef.current));
+      void speakText(getStartupAnnouncement(messagesRef.current, profileName || 'there'));
     }, 2000);
-  }, []);
+  }, [profileName]);
+
+  if (profileLoading) {
+    return <div className="min-h-screen bg-black text-white flex items-center justify-center"><div className="text-center"><div className="text-xs tracking-[0.3em] text-zinc-500">MOSES // COALESCE OS</div><p className="mt-4 text-sm text-zinc-400">Preparing your identity...</p></div></div>;
+  }
+
+  if (needsNameSetup) {
+    return (
+      <main className="min-h-screen bg-black text-white flex items-center justify-center p-6">
+        <form onSubmit={(event) => { event.preventDefault(); void handleSaveProfileName(); }} className="w-full max-w-md border border-white/10 bg-white/[0.04] p-8">
+          <div className="text-xs tracking-[0.3em] text-zinc-500 mb-3">MOSES // PERSONAL IDENTITY</div>
+          <h1 className="text-3xl font-semibold tracking-tight">WHAT SHOULD I CALL YOU?</h1>
+          <p className="text-sm text-zinc-400 mt-3 leading-relaxed">Let's get your profile set up. Your preferred name will be saved to your account and used in greetings, the interface and our conversations. You only need to do this once.</p>
+          <label htmlFor="moses-profile-name" className="block mt-8 mb-2 text-xs font-semibold tracking-wider text-zinc-300">YOUR NAME</label>
+          <input id="moses-profile-name" autoFocus autoComplete="given-name" maxLength={40} required value={nameDraft} onChange={event => setNameDraft(event.target.value)} placeholder="e.g. Nate" className="w-full bg-white/[0.06] border border-white/15 px-4 py-3 outline-none focus:border-white/50 text-white" />
+          {nameSetupError && <p role="alert" className="text-sm text-red-400 mt-3">{nameSetupError}</p>}
+          <button disabled={savingName || !nameDraft.trim()} className="w-full mt-5 bg-white text-black py-3 font-semibold disabled:opacity-50">{savingName ? 'SAVING PROFILE...' : 'SAVE & ENTER MOSES'}</button>
+          <p className="mt-4 text-[11px] text-zinc-500">This is stored securely with your signed-in account, not on this device.</p>
+        </form>
+      </main>
+    );
+  }
 
   if (isBooting) {
     return <BootSequence onComplete={handleBootComplete} />;
@@ -736,6 +826,7 @@ export function App() {
                 projects={projects}
                 aiState={aiState}
                 isOnline={isOnline}
+                profileName={profileName}
               />
             ) : (
               <CommandFeedView
