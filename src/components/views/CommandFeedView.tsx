@@ -19,6 +19,7 @@ import { speakText } from '../../utils/speech';
 
 interface CommandFeedViewProps {
   messages: ChatMessage[];
+  profileName: string;
   onSendMessage: (msg: string) => void;
   isProcessing: boolean;
   isListening: boolean;
@@ -35,6 +36,7 @@ interface CommandFeedViewProps {
 
 export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
   messages,
+  profileName,
   onSendMessage,
   isProcessing,
   isListening,
@@ -139,7 +141,7 @@ export const CommandFeedView: React.FC<CommandFeedViewProps> = ({
                   </>
                 ) : (
                   <>
-                    <span className="text-xs font-bold text-zinc-800">You</span>
+                    <span className="text-xs font-bold text-zinc-800">{profileName || 'You'}</span>
                     <div className="w-5 h-5 rounded-full flex items-center justify-center bg-zinc-200 text-zinc-700">
                       <User size={11} />
                     </div>
