@@ -56,7 +56,8 @@ export async function POST(req: Request) {
     );
 
     const context = buildMosesContext({ activeSection: requestedSection, collections });
-    const result = await generateMosesResponse(message, context);
+    const profileName = typeof user.user_metadata?.moses_name === 'string' ? user.user_metadata.moses_name.trim().slice(0, 40) : '';
+    const result = await generateMosesResponse(message, context, profileName);
     const contextDiagnostics = {
       ...context.system,
       queriedCollections: selectedCollections,
