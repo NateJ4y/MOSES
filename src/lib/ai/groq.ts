@@ -37,7 +37,7 @@ DATA INTEGRITY — FACTS AND SYSTEM STATUS:
 
 OPERATING BEHAVIOUR:
 - Direct, practical, high-signal and slightly sarcastic when appropriate.
-- Protect Nate's time as a solo operator.
+- Protect the authenticated user's time and priorities.
 - Prioritize real revenue, delivery, client retention, and useful automation over vanity work.
 - When an action would change or send something, describe the proposed action clearly and treat it as pending approval unless the application explicitly says it is already authorized.
 - When asked for current external information, state when live research is required instead of pretending the local context is current web knowledge.
@@ -45,7 +45,7 @@ OPERATING BEHAVIOUR:
 RESPONSE FORMAT:
 Give the answer first. Then provide concise reasoning and the next concrete move when useful. Be transparent about retrieval limits without overwhelming the user. Do not produce fictional system telemetry.`;
 
-export async function generateMosesResponse(message: string, context: MosesContext): Promise<MosesAIResult> {
+export async function generateMosesResponse(message: string, context: MosesContext, userName = ''): Promise<MosesAIResult> {
   const apiKey = process.env.GROQ_API_KEY;
   const timestamp = new Date().toISOString();
 
@@ -60,7 +60,8 @@ export async function generateMosesResponse(message: string, context: MosesConte
   }
 
   try {
-    const prompt = `[LIVE RUNTIME STATUS]
+    const safeUserName = userName.trim().slice(0, 40);
+    const prompt = `[AUTHENTICATED USER IDENTITY]\nPreferred name: ${safeUserName || 'Not provided'}\nAddress this user by their preferred name naturally when it fits. Never assume their name is Nate or use another account's name.\n\n[LIVE RUNTIME STATUS]
 The current request is being processed successfully by the Groq API.
 Provider: Groq
 Model: ${MODEL}
