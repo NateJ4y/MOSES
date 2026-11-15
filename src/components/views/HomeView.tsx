@@ -35,6 +35,7 @@ interface HomeViewProps {
   projects?: DigitalOpsProject[];
   aiState: 'IDLE' | 'LISTENING' | 'THINKING' | 'RESPONDING';
   isOnline?: boolean;
+  profileName: string;
 }
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -54,17 +55,20 @@ export const HomeView: React.FC<HomeViewProps> = ({
   warnings,
   projects = [],
   aiState,
-  isOnline = false
+  isOnline = false,
+  profileName
 }) => {
   const [inputVal, setInputVal] = useState('');
-  const [greeting, setGreeting] = useState('Good afternoon, Nate.');
+  const [greeting, setGreeting] = useState('Good afternoon.');
 
   useEffect(() => {
     const hour = new Date().getHours();
-    if (hour < 12) setGreeting('Good morning, Nate.');
-    else if (hour < 18) setGreeting('Good afternoon, Nate.');
-    else setGreeting('Good evening, Nate.');
-  }, []);
+    const name = profileName.trim();
+    const suffix = name ? `, ${name}` : '';
+    if (hour < 12) setGreeting(`Good morning${suffix}.`);
+    else if (hour < 18) setGreeting(`Good afternoon${suffix}.`);
+    else setGreeting(`Good evening${suffix}.`);
+  }, [profileName]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -124,6 +128,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <span className="w-1.5 h-1.5 rounded-full bg-zinc-900" />
             <span className="text-[10px] text-zinc-600 font-medium tracking-wider uppercase">COALESCE OS</span>
           </div>
+          <span className="hidden sm:inline text-[10px] text-zinc-500 font-medium tracking-wide">FOR {profileName.toUpperCase()}</span>
           <span className="text-[10px] text-zinc-400 font-mono-tech">v2.4</span>
         </div>
       </div>
