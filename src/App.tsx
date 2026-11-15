@@ -833,6 +833,7 @@ export function App() {
             ) : (
               <CommandFeedView
                 messages={messages}
+                profileName={profileName}
                 onSendMessage={handleExecutePrompt}
                 isProcessing={isProcessing}
                 isListening={isListening}
