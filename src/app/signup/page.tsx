@@ -57,7 +57,7 @@ export default function SignupPage() {
       <div className="w-full max-w-md border border-white/10 bg-white/[0.04] p-8">
         <div className="text-xs tracking-[0.3em] text-zinc-500 mb-3">MOSES // COALESCE OS</div>
         <h1 className="text-3xl font-semibold tracking-tight">CREATE IDENTITY</h1>
-        <p className="text-sm text-zinc-400 mt-2">Create the first authenticated MOSES identity.</p>
+        <p className="text-sm text-zinc-400 mt-2">Create your personal MOSES account and choose what MOSES should call you.</p>
         <form onSubmit={submit} className="mt-8 space-y-4">
           <input aria-label="Your name" type="text" autoComplete="given-name" maxLength={40} required value={name} onChange={e => setName(e.target.value)} placeholder="What should MOSES call you?" className="w-full bg-white/[0.06] border border-white/10 px-4 py-3 outline-none focus:border-white/40" />
           <input aria-label="Email" type="email" required value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" className="w-full bg-white/[0.06] border border-white/10 px-4 py-3 outline-none focus:border-white/40" />
