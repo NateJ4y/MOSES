@@ -29,7 +29,7 @@ export default function SignupPage() {
         email: email.trim(),
         password,
         options: {
-          data: { moses_name: name.trim().replace(/\\s+/g, ' ') },
+          data: { moses_name: name.trim().replace(/\s+/g, ' ') },
           emailRedirectTo: window.location.origin + '/auth/confirm?next=/',
         },
       });
