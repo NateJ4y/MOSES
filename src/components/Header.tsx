@@ -28,6 +28,7 @@ interface HeaderProps {
   onToggleRightPanel?: () => void;
   onNavigateHome?: () => void;
   isOnline?: boolean;
+  profileName?: string;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -42,7 +43,8 @@ export const Header: React.FC<HeaderProps> = ({
   isRightPanelOpen,
   onToggleRightPanel,
   onNavigateHome,
-  isOnline = false
+  isOnline = false,
+  profileName = ''
 }) => {
   const [time, setTime] = useState<string>('');
   const [dateStr, setDateStr] = useState<string>('');
@@ -198,6 +200,8 @@ export const Header: React.FC<HeaderProps> = ({
         >
           {soundOn ? <Volume2 size={14} strokeWidth={1.75} className="text-zinc-900" /> : <VolumeX size={14} strokeWidth={1.75} />}
         </button>
+
+        {profileName && <div className="hidden sm:flex flex-col items-end px-2"><span className="text-[9px] text-zinc-400 tracking-wider">SIGNED IN AS</span><span className="text-xs font-semibold text-zinc-800">{profileName}</span></div>}
 
         {/* Digital Clock */}
         <div className="flex flex-col items-end pl-3 border-l border-zinc-200">
