@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
@@ -13,6 +13,15 @@ export default function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [googleBusy, setGoogleBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // /login?switch=1 must start from a signed-out state so the next sign-in is a
+  // different account, not the existing session.
+  useEffect(() => {
+    if (searchParams.get('switch') !== '1') return;
+    void createClient().auth.signOut().finally(() => {
+      window.history.replaceState(null, '', '/login');
+    });
+  }, [searchParams]);
 
   async function signInWithGoogle() {
     setGoogleBusy(true);

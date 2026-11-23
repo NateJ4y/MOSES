@@ -8,7 +8,8 @@ export default function LogoutPage() {
     const run = async () => {
       const supabase = createClient();
       await supabase.auth.signOut();
-      window.location.assign('/login');
+      const requested = new URLSearchParams(window.location.search).get('next') || '/login';
+      window.location.assign(requested.startsWith('/') && !requested.startsWith('//') ? requested : '/login');
     };
     void run();
   }, []);

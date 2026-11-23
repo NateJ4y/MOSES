@@ -1,4 +1,4 @@
-import { dbConfigured, ensureWorkspaceForUser, dbRequest, getAuthenticatedUser } from '@/lib/db/server';
+import { dbConfigured, resolveWorkspaceForUser, dbRequest, getAuthenticatedUser } from '@/lib/db/server';
 import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
@@ -45,7 +45,7 @@ export default async function HealthPage() {
     result.error = 'Supabase server environment variables are missing.';
   } else {
     try {
-      const workspaceId = await ensureWorkspaceForUser(user.id);
+      const workspaceId = await resolveWorkspaceForUser(user.id);
       result.workspaceId = workspaceId;
       result.collections = {};
 

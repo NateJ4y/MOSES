@@ -18,6 +18,7 @@ import {
   LogOut,
   LogIn
 } from 'lucide-react';
+import { WorkspaceSettingsCard } from '../WorkspaceSwitcher';
 import { playCyberSound } from '../../utils/audio';
 
 interface SettingsViewProps {
@@ -75,6 +76,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
+      <WorkspaceSettingsCard />
+
       <form onSubmit={handleSave} className="space-y-5">
         <div className="p-6 rounded-2xl bg-white border border-zinc-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
@@ -85,7 +88,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <p className="text-[11px] text-zinc-500 mt-1">Manage access to your MOSES workspace. Sign in with another account or securely end the current session.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button type="button" onClick={() => { playCyberSound('click'); window.location.assign('/login?switch=1'); }} className="px-3.5 py-2 rounded-full bg-white hover:bg-zinc-100 border border-zinc-300 text-xs font-semibold transition-colors inline-flex items-center gap-1.5">
+            <button type="button" onClick={() => { playCyberSound('click'); window.location.assign('/logout?next=/login'); }} className="px-3.5 py-2 rounded-full bg-white hover:bg-zinc-100 border border-zinc-300 text-xs font-semibold transition-colors inline-flex items-center gap-1.5">
               <LogIn size={13} />
               Sign in / Switch account
             </button>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbConfigured, ensureWorkspaceForUser, getAuthenticatedUser, getWorkspaceMembership, WorkspaceAuthorizationError, isSameOriginRequest } from "@/lib/db/server";
+import { dbConfigured, resolveWorkspaceForUser, getAuthenticatedUser, getWorkspaceMembership, WorkspaceAuthorizationError, isSameOriginRequest } from "@/lib/db/server";
 
 export const runtime = "nodejs";
 
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
     if (!dbConfigured) return NextResponse.json({ error: "Database is not connected." }, { status: 503 });
 
-    const workspaceId = await ensureWorkspaceForUser(user.id);
+    const workspaceId = await resolveWorkspaceForUser(user.id);
     const membership = await getWorkspaceMembership(user.id, workspaceId);
     if (!membership) throw new WorkspaceAuthorizationError("You do not have access to this workspace.");
     if (!["OWNER", "ADMIN", "MEMBER"].includes(membership.role)) {

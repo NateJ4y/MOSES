@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { dbConfigured, ensureWorkspaceForUser, getAuthenticatedUser, getWorkspaceMembership, WorkspaceAuthorizationError } from "@/lib/db/server";
+import { dbConfigured, resolveWorkspaceForUser, getAuthenticatedUser, getWorkspaceMembership, WorkspaceAuthorizationError } from "@/lib/db/server";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +9,7 @@ export async function GET() {
     if (!user) return NextResponse.json({ ok: false, error: "Authentication required." }, { status: 401 });
     if (!dbConfigured) return NextResponse.json({ ok: false, configured: false, error: "Database is not connected." }, { status: 503 });
 
-    const workspaceId = await ensureWorkspaceForUser(user.id);
+    const workspaceId = await resolveWorkspaceForUser(user.id);
     const membership = await getWorkspaceMembership(user.id, workspaceId);
     if (!membership) throw new WorkspaceAuthorizationError("You do not have access to this workspace.");
 

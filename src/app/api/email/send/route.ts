@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { dbConfigured, ensureWorkspaceForUser, getWorkspaceMembership, WorkspaceAuthorizationError, isSameOriginRequest } from '@/lib/db/server';
+import { dbConfigured, resolveWorkspaceForUser, getWorkspaceMembership, WorkspaceAuthorizationError, isSameOriginRequest } from '@/lib/db/server';
 
 export const runtime = 'nodejs';
 
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const workspaceId = await ensureWorkspaceForUser(user.id);
+    const workspaceId = await resolveWorkspaceForUser(user.id);
     const membership = await getWorkspaceMembership(user.id, workspaceId);
     if (!membership) throw new WorkspaceAuthorizationError('You do not have access to this workspace.');
     if (!['OWNER', 'ADMIN', 'MEMBER'].includes(membership.role)) {

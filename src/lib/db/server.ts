@@ -1,11 +1,17 @@
 import { randomUUID } from 'node:crypto';
+import { cookies } from 'next/headers';
 import { createClient as createSupabaseServerClient } from '@/lib/supabase/server';
 
 const url = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 export const dbConfigured = Boolean(url && key);
 
-const allowedTables = new Set(['workspaces', 'workspace_members', 'moses_records']);
+const allowedTables = new Set(['workspaces', 'workspace_members', 'moses_records', 'platform_admins', 'workspace_creators']);
+
+export const WORKSPACE_COOKIE = 'moses_workspace';
+export type MembershipStatus = 'pending' | 'active' | 'rejected' | 'suspended';
+export const MEMBERSHIP_STATUSES: MembershipStatus[] = ['pending', 'active', 'rejected', 'suspended'];
+export const WORKSPACE_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;
 
 export function isSameOriginRequest(request: Request) {
   const expectedOrigin = new URL(request.url).origin;
@@ -20,10 +26,23 @@ export function isSameOriginRequest(request: Request) {
   return false;
 }
 
+export function workspaceCookieOptions() {
+  return { httpOnly: true, sameSite: 'lax' as const, secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 60 * 60 * 24 * 30 };
+}
+
+export type WorkspaceErrorCode =
+  | 'NO_ACTIVE_WORKSPACE'
+  | 'ACCESS_PENDING'
+  | 'WORKSPACE_SELECTION_REQUIRED'
+  | 'NOT_A_MEMBER'
+  | 'FORBIDDEN';
+
 export class WorkspaceAuthorizationError extends Error {
-  constructor(message: string) {
+  code: WorkspaceErrorCode;
+  constructor(message: string, code: WorkspaceErrorCode = 'FORBIDDEN') {
     super(message);
     this.name = 'WorkspaceAuthorizationError';
+    this.code = code;
   }
 }
 
@@ -111,7 +130,7 @@ export async function getAuthenticatedUser() {
 export async function getWorkspaceMembership(userId: string, workspaceId: string) {
   const rows = await dbRequest(
     'workspace_members?select=workspace_id,role&user_id=eq.' + encodeURIComponent(userId) +
-    '&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&limit=1',
+    '&workspace_id=eq.' + encodeURIComponent(workspaceId) + '&status=eq.active&limit=1',
     { method: 'GET' }
   );
   if (!Array.isArray(rows) || !rows[0]) return null;
@@ -121,62 +140,115 @@ export async function getWorkspaceMembership(userId: string, workspaceId: string
   };
 }
 
-export async function ensureWorkspaceForUser(userId: string) {
-  if (!dbConfigured) throw new Error('MOSES database is not configured.');
+export interface UserWorkspace {
+  id: string;
+  name: string;
+  role: string;
+  status: MembershipStatus;
+}
 
-  if (process.env.MOSES_WORKSPACE_ID) {
-    const configuredId = process.env.MOSES_WORKSPACE_ID;
-    const membership = await getWorkspaceMembership(userId, configuredId);
-    if (membership) return configuredId;
-
-    const workspaces = await dbRequest(
-      'workspaces?select=id,owner_id&id=eq.' + encodeURIComponent(configuredId) + '&limit=1',
-      { method: 'GET' }
-    );
-    const workspace = Array.isArray(workspaces) ? workspaces[0] : null;
-    if (!workspace) throw new Error('Configured MOSES workspace does not exist. Run the database schema first.');
-
-    if (!workspace.owner_id) {
-      throw new WorkspaceAuthorizationError(
-        'The configured MOSES workspace has no owner. An administrator must assign its owner before users can join.'
-      );
-    }
-    if (workspace.owner_id !== userId) {
-      throw new WorkspaceAuthorizationError('You are not a member of the configured MOSES workspace.');
-    }
-
-    await dbRequest('workspace_members?on_conflict=workspace_id,user_id', {
-      method: 'POST',
-      headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-      body: JSON.stringify({ workspace_id: configuredId, user_id: userId, role: 'owner' })
-    });
-    return configuredId;
-  }
-
+export async function listUserWorkspaces(userId: string): Promise<UserWorkspace[]> {
   const memberships = await dbRequest(
-    'workspace_members?select=workspace_id&user_id=eq.' + encodeURIComponent(userId) +
-    '&order=created_at.asc&limit=1',
+    'workspace_members?select=workspace_id,role,status&user_id=eq.' + encodeURIComponent(userId) + '&order=created_at.asc',
     { method: 'GET' }
   );
-  if (Array.isArray(memberships) && memberships[0]?.workspace_id) {
-    return memberships[0].workspace_id as string;
+  if (!Array.isArray(memberships) || !memberships.length) return [];
+  const ids = memberships.map((row: { workspace_id: string }) => row.workspace_id);
+  const workspaces = await dbRequest(
+    'workspaces?select=id,name&id=in.(' + ids.map(encodeURIComponent).join(',') + ')',
+    { method: 'GET' }
+  );
+  const names = new Map<string, string>(
+    (Array.isArray(workspaces) ? workspaces : []).map((w: { id: string; name: string }) => [w.id, w.name])
+  );
+  return memberships.map((row: { workspace_id: string; role: string; status: MembershipStatus }) => ({
+    id: row.workspace_id,
+    name: names.get(row.workspace_id) || 'Workspace',
+    role: String(row.role || '').toUpperCase(),
+    status: row.status
+  }));
+}
+
+export async function isPlatformAdmin(userId: string) {
+  const rows = await dbRequest(
+    'platform_admins?select=user_id&user_id=eq.' + encodeURIComponent(userId) + '&limit=1',
+    { method: 'GET' }
+  );
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+export async function isApprovedWorkspaceCreator(userId: string) {
+  const rows = await dbRequest(
+    'workspace_creators?select=user_id&user_id=eq.' + encodeURIComponent(userId) + '&limit=1',
+    { method: 'GET' }
+  );
+  return Array.isArray(rows) && rows.length > 0;
+}
+
+export async function requirePlatformAdmin() {
+  const user = await getAuthenticatedUser();
+  if (!user) return { user: null, error: 'Authentication required.', status: 401 as const };
+  if (!dbConfigured) return { user: null, error: 'Database is not connected.', status: 503 as const };
+  if (!(await isPlatformAdmin(user.id))) return { user: null, error: 'Platform administrator access required.', status: 403 as const };
+  return { user, error: null, status: 200 as const };
+}
+
+/**
+ * Resolve the workspace for this request. READ-ONLY: it never creates a
+ * workspace or a membership. The selected workspace comes from the
+ * `moses_workspace` cookie and is only honoured when the signed-in user has an
+ * ACTIVE membership in it; otherwise it is ignored. With no valid selection, a
+ * user with exactly one active membership uses it; several require an explicit
+ * choice; none means access has not been granted yet.
+ */
+export async function resolveWorkspaceForUser(userId: string): Promise<string> {
+  if (!dbConfigured) throw new Error('MOSES database is not configured.');
+  const workspaces = await listUserWorkspaces(userId);
+  const active = workspaces.filter((w) => w.status === 'active');
+
+  const selected = (await cookies()).get(WORKSPACE_COOKIE)?.value;
+  if (selected && active.some((w) => w.id === selected)) return selected;
+
+  if (active.length === 1) return active[0].id;
+  if (active.length > 1) {
+    throw new WorkspaceAuthorizationError('Choose which workspace to open.', 'WORKSPACE_SELECTION_REQUIRED');
   }
+  if (workspaces.some((w) => w.status === 'pending')) {
+    throw new WorkspaceAuthorizationError('Your access request is waiting for approval.', 'ACCESS_PENDING');
+  }
+  throw new WorkspaceAuthorizationError(
+    'You do not have access to a workspace yet. A platform administrator must approve your account.',
+    'NO_ACTIVE_WORKSPACE'
+  );
+}
 
-  // New users receive an isolated workspace. They are never silently added to
-  // another user's workspace.
-  const created = await dbRequest('workspaces', {
-    method: 'POST',
-    headers: { Prefer: 'return=representation' },
-    body: JSON.stringify({ name: 'Coalesce Digital', owner_id: userId })
+async function authAdminFetch(path: string) {
+  if (!url || !key) throw new Error('MOSES database is not configured.');
+  const response = await fetch(url + '/auth/v1/admin/' + path, {
+    headers: { apikey: key, Authorization: 'Bearer ' + key },
+    cache: 'no-store'
   });
-  if (!Array.isArray(created) || !created[0]?.id) throw new Error('Could not initialize authenticated MOSES workspace.');
-  const workspaceId = created[0].id as string;
+  if (!response.ok) throw new Error('Supabase auth ' + response.status);
+  return response.json();
+}
 
-  await dbRequest('workspace_members?on_conflict=workspace_id,user_id', {
-    method: 'POST',
-    headers: { Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify({ workspace_id: workspaceId, user_id: userId, role: 'owner' })
-  });
+export async function getAuthUserEmail(userId: string): Promise<string | null> {
+  try {
+    const user = await authAdminFetch('users/' + encodeURIComponent(userId));
+    return typeof user?.email === 'string' ? user.email : null;
+  } catch {
+    return null;
+  }
+}
 
-  return workspaceId;
+export async function findAuthUserIdByEmail(email: string): Promise<string | null> {
+  const wanted = email.trim().toLowerCase();
+  for (let page = 1; page <= 10; page++) {
+    const body = await authAdminFetch('users?page=' + page + '&per_page=200');
+    const users: Array<{ id: string; email?: string }> = Array.isArray(body?.users) ? body.users : [];
+    const match = users.find((u) => (u.email || '').toLowerCase() === wanted);
+    if (match) return match.id;
+    if (users.length < 200) break;
+  }
+  return null;
 }

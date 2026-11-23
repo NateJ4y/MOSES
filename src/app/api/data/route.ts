@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   dbConfigured,
-  ensureWorkspaceForUser,
+  resolveWorkspaceForUser,
   getAuthenticatedUser,
   getWorkspaceMembership,
   listRecords,
@@ -29,7 +29,7 @@ async function authenticatedWorkspace() {
   const user = await getAuthenticatedUser();
   if (!user) return { user: null, workspaceId: null, role: null };
 
-  const workspaceId = await ensureWorkspaceForUser(user.id);
+  const workspaceId = await resolveWorkspaceForUser(user.id);
   const membership = await getWorkspaceMembership(user.id, workspaceId);
   if (!membership) {
     throw new WorkspaceAuthorizationError('You do not have an active membership in this MOSES workspace.');
@@ -46,7 +46,7 @@ function recordsFromBody(body: unknown): unknown[] {
 
 function workspaceErrorResponse(error: unknown, fallback: string) {
   if (error instanceof WorkspaceAuthorizationError) {
-    return NextResponse.json({ error: error.message }, { status: 403 });
+    return NextResponse.json({ error: error.message, code: error.code }, { status: 403 });
   }
   return NextResponse.json({
     error: error instanceof Error ? error.message : fallback
