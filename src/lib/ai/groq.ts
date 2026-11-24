@@ -1,5 +1,6 @@
 import type { MosesAIResult, MosesContext } from './types';
 import { serializeMosesContext } from './context';
+import { skeemSystemInstructions } from '../skeem';
 
 const MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
@@ -76,7 +77,7 @@ OPERATING BEHAVIOUR:
 - When asked for current external information, state when live research is required instead of pretending the local context is current web knowledge.
 
 RESPONSE FORMAT:
-Give the answer first. Then provide concise reasoning and the next concrete move when useful. Be transparent about retrieval limits without overwhelming the user. Do not produce fictional system telemetry.`;
+Give the answer first. Then provide concise reasoning and the next concrete move when useful. Be transparent about retrieval limits without overwhelming the user. Do not produce fictional system telemetry.` + '\n\n' + skeemSystemInstructions();
 
 export async function generateMosesResponse(message: string, context: MosesContext, userName = ''): Promise<MosesAIResult> {
   const apiKey = process.env.GROQ_API_KEY;

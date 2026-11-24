@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 
 const persistenceQueues = new Map<string, Promise<void>>();
-import { NavSection, Lead, StrategicWarning, ChatMessage, LeadStatus, DigitalOpsProject, EmailMessage, ClientDNA } from './types';
+import { NavSection, Lead, StrategicWarning, ChatMessage, LeadStatus, DigitalOpsProject, EmailMessage, ClientDNA, OutreachRecord, ActivityRecord } from './types';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { RightIntelligencePanel } from './components/RightIntelligencePanel';
@@ -168,6 +168,9 @@ export function App() {
   const [projects, setProjects] = useState<DigitalOpsProject[]>([]);
   const [emails, setEmails] = useState<EmailMessage[]>([]);
   const [clientDNA, setClientDNA] = useState<ClientDNA[]>([]);
+  const [outreach, setOutreach] = useState<OutreachRecord[]>([]);
+  const [activities, setActivities] = useState<ActivityRecord[]>([]);
+  const [outreachWriteError, setOutreachWriteError] = useState<string | null>(null);
   const [outreachTargetLead, setOutreachTargetLead] = useState<Lead | null>(null);
 
   // AI & Voice State
@@ -222,7 +225,9 @@ export function App() {
     'moses.projects.v1': 'projects',
     'moses.emails.v1': 'emails',
     'moses.messages.v1': 'messages',
-    'moses.clientDNA.v1': 'client_dna'
+    'moses.clientDNA.v1': 'client_dna',
+    'moses.outreach.v1': 'outreach',
+    'moses.activities.v1': 'activities'
   } as const)[key];
 
   const persist = useCallback(async (key: string, value: unknown) => {
@@ -244,11 +249,13 @@ export function App() {
         }
         if (collection === 'leads') { setLeadWriteError(null); setLeadSaveStatus('saved'); }
         if (collection === 'projects') { setProjectWriteError(null); setProjectSaveStatus('saved'); }
+        if (collection === 'outreach' || collection === 'activities') setOutreachWriteError(null);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Database write failed.';
         console.error('MOSES database write failed:', error);
         if (collection === 'leads') { setLeadWriteError(message); setLeadSaveStatus('error'); }
         if (collection === 'projects') { setProjectWriteError(message); setProjectSaveStatus('error'); }
+        if (collection === 'outreach' || collection === 'activities') setOutreachWriteError(message);
       }
     });
     persistenceQueues.set(key, next);
@@ -263,7 +270,9 @@ export function App() {
     setProjects([]);
     setEmails([]);
     setClientDNA([]);
-    void Promise.all([persist('moses.leads.v1', []), persist('moses.projects.v1', []), persist('moses.emails.v1', []), persist('moses.messages.v1', []), persist('moses.clientDNA.v1', [])]);
+    setOutreach([]);
+    setActivities([]);
+    void Promise.all([persist('moses.leads.v1', []), persist('moses.projects.v1', []), persist('moses.emails.v1', []), persist('moses.messages.v1', []), persist('moses.clientDNA.v1', []), persist('moses.outreach.v1', []), persist('moses.activities.v1', [])]);
     setOutreachTargetLead(null);
     setMessages([
       {
@@ -290,7 +299,7 @@ export function App() {
   // Each collection hydrates independently so one broken table can never wipe another table.
   useEffect(() => {
     let cancelled = false;
-    const collections = ['leads', 'projects', 'emails', 'messages', 'client_dna'] as const;
+    const collections = ['leads', 'projects', 'emails', 'messages', 'client_dna', 'outreach', 'activities'] as const;
 
     const load = async () => {
       const results = await Promise.allSettled(collections.map(async (collection) => {
@@ -314,6 +323,8 @@ export function App() {
           if (collection === 'emails') setEmails(records as EmailMessage[]);
           if (collection === 'messages') setMessages(records as ChatMessage[]);
           if (collection === 'client_dna') setClientDNA(records as ClientDNA[]);
+          if (collection === 'outreach') setOutreach(records as OutreachRecord[]);
+          if (collection === 'activities') setActivities(records as ActivityRecord[]);
         } else {
           console.warn('MOSES database hydration failed:', result.reason);
         }
@@ -333,6 +344,8 @@ export function App() {
   useEffect(() => { if (hydratedCollections.has('emails')) persist('moses.emails.v1', emails); }, [emails, persist, hydratedCollections]);
   useEffect(() => { if (hydratedCollections.has('messages')) persist('moses.messages.v1', messages); }, [messages, persist, hydratedCollections]);
   useEffect(() => { if (hydratedCollections.has('client_dna')) persist('moses.clientDNA.v1', clientDNA); }, [clientDNA, persist, hydratedCollections]);
+  useEffect(() => { if (hydratedCollections.has('outreach')) persist('moses.outreach.v1', outreach); }, [outreach, persist, hydratedCollections]);
+  useEffect(() => { if (hydratedCollections.has('activities')) persist('moses.activities.v1', activities); }, [activities, persist, hydratedCollections]);
   // Strategic warnings are derived only from real records.
   useEffect(() => {
     const next: StrategicWarning[] = [];
@@ -653,6 +666,12 @@ export function App() {
   };
 
   const handleUpdateLeadStatus = (leadId: string, newStatus: LeadStatus) => {
+    // SKEEM rule: a lead is not won until payment/commercial confirmation is verified.
+    if (newStatus === 'WON') {
+      const lead = leads.find(l => l.id === leadId);
+      if (lead && lead.paymentVerificationStatus !== 'VERIFIED' &&
+          !window.confirm('Payment has not been verified for this lead in MOSES. Mark it as won anyway?')) return;
+    }
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: newStatus } : l));
   };
 
@@ -879,6 +898,14 @@ export function App() {
             <OutreachView
               leads={leads}
               initialLead={outreachTargetLead}
+              outreach={outreach}
+              activities={activities}
+              onUpdateLead={handleUpdateLead}
+              onUpdateOutreach={setOutreach}
+              onUpdateActivities={setActivities}
+              canPersist={hydratedCollections.has('outreach') && hydratedCollections.has('activities') && hydratedCollections.has('leads')}
+              writeError={outreachWriteError}
+              userName={profileName}
             />
           )}
 

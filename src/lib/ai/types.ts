@@ -1,3 +1,4 @@
+import type { SkeemPipelineDigest } from '../skeem';
 export type MosesProvider = 'groq';
 
 export const MOSES_COLLECTION_NAMES = [
@@ -41,8 +42,13 @@ export interface MosesCollectionContext {
   records: unknown[];
 }
 
+export type MosesSkeemContext =
+  | SkeemPipelineDigest
+  | { status: 'unavailable' | 'not_queried'; reason: string };
+
 export interface MosesContext {
   activeSection: string;
+  skeem?: MosesSkeemContext;
   collections: Record<MosesCollection, MosesCollectionContext>;
   system: {
     completeness: 'complete' | 'partial';

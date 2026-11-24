@@ -5,10 +5,11 @@ import type {
   MosesContext,
 } from './types';
 import { MOSES_COLLECTION_NAMES } from './types';
+import { isSkeemRelated } from '../skeem';
 
 const MAX_ITEMS_PER_COLLECTION = 25;
 const MAX_MESSAGES = 20;
-const MAX_CONTEXT_CHARACTERS = 12_000;
+const MAX_CONTEXT_CHARACTERS = 16_000;
 const MAX_STRING_LENGTH = 3_000;
 const MAX_OBJECT_KEYS = 50;
 const MAX_ARRAY_ITEMS = 30;
@@ -120,6 +121,7 @@ function updateSystem(context: Omit<MosesContext, 'system'>): MosesContext {
 export function buildMosesContext(input: {
   activeSection: string;
   collections: Partial<Record<MosesCollection, MosesCollectionInput>>;
+  skeem?: MosesContext['skeem'];
 }): MosesContext {
   const collections = Object.fromEntries(
     MOSES_COLLECTION_NAMES.map((collection) => [
@@ -131,6 +133,7 @@ export function buildMosesContext(input: {
   const context = updateSystem({
     activeSection: String(input.activeSection || 'COMMAND').slice(0, 40),
     collections,
+    ...(input.skeem ? { skeem: input.skeem } : {}),
   });
 
   // Keep the prompt bounded. If the total context is too large, remove the
@@ -171,7 +174,7 @@ const COLLECTION_TERMS: Partial<Record<MosesCollection, RegExp>> = {
   tasks: /\b(task|todo|to-do|deadline|due|priority)\b/i,
   services: /\b(service|offering|capabilit(?:y|ies))\b/i,
   offers: /\b(offer|quote|quotation|proposal|pricing|price)\b/i,
-  outreach: /\b(outreach|cold message|follow.?up|campaign|prospecting)\b/i,
+  outreach: /\b(outreach|cold message|follow.?up|nudge|campaign|prospecting|skeem|opt.?out|objection|handover)\b/i,
   messages: /\b(message|chat|conversation|whatsapp|communication|reply)\b/i,
   emails: /\b(email|inbox|mail|sent)\b/i,
   research: /\b(research|competitor|market|industry|benchmark)\b/i,
@@ -179,7 +182,7 @@ const COLLECTION_TERMS: Partial<Record<MosesCollection, RegExp>> = {
   memory: /\b(memory|remember|previous decision|history)\b/i,
   workflows: /\b(workflow|automation|n8n|process|integration flow)\b/i,
   workflow_runs: /\b(workflow run|execution|run history|automation history)\b/i,
-  activities: /\b(activity|timeline|audit trail|what happened)\b/i,
+  activities: /\b(activity|activities|timeline|audit trail|what happened|history|last contact)\b/i,
   goals_kpis: /\b(goal|kpi|target|metric|performance|revenue|growth)\b/i,
   documents: /\b(document|file|attachment|contract|brief)\b/i,
   integrations: /\b(integration|connected app|provider|connection status)\b/i,
@@ -190,7 +193,7 @@ const RELATED_COLLECTIONS: Partial<Record<MosesCollection, MosesCollection[]>> =
   clients: ['companies', 'contacts', 'client_dna', 'projects', 'tasks', 'messages', 'emails'],
   projects: ['clients', 'tasks', 'documents', 'activities', 'messages'],
   tasks: ['projects', 'clients', 'activities'],
-  outreach: ['leads', 'companies', 'contacts', 'messages'],
+  outreach: ['leads', 'companies', 'contacts', 'messages', 'activities'],
   messages: ['leads', 'clients', 'contacts', 'outreach'],
   workflows: ['workflow_runs', 'integrations', 'activities'],
   goals_kpis: ['activities', 'projects', 'tasks'],
@@ -203,6 +206,10 @@ export function selectRelevantCollections(message: string, activeSection = 'COMM
   const selected = new Set<MosesCollection>();
   for (const [collection, pattern] of Object.entries(COLLECTION_TERMS) as [MosesCollection, RegExp][]) {
     if (pattern.test(query)) selected.add(collection);
+  }
+  // SKEEM questions need the pipeline, the outreach history and the audit trail together.
+  if (isSkeemRelated(message, activeSection)) {
+    (['leads', 'outreach', 'activities', 'messages'] as MosesCollection[]).forEach((collection) => selected.add(collection));
   }
   if (!selected.size) DEFAULT_COLLECTIONS.forEach((collection) => selected.add(collection));
   for (const collection of [...selected]) for (const related of RELATED_COLLECTIONS[collection] || []) selected.add(related);

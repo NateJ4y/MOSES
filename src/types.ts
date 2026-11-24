@@ -1,3 +1,12 @@
+import type {
+  SkeemStageId, ContactRestriction, ConceptStatus, ProposalStatus, PaymentVerificationStatus
+} from './lib/skeem';
+export type {
+  SkeemStageId, ContactRestriction, ConceptStatus, ProposalStatus, PaymentVerificationStatus,
+  OutreachRecord, OutreachChannel, OutreachDirection, OutreachStatus, OutreachSequence,
+  ActivityRecord, ActivityType
+} from './lib/skeem';
+
 export type NavSection =
   | 'HOME'
   | 'COMMAND'
@@ -59,6 +68,14 @@ export interface Lead {
   signals: string[];
   capacityRisk?: boolean;
   notes?: string;
+  // SKEEM fields (all optional and additive; the CRM `status` above is a separate dimension).
+  skeemStage?: SkeemStageId;
+  contactRestriction?: ContactRestriction;
+  problemVerified?: boolean;
+  conceptStatus?: ConceptStatus;
+  conceptUrl?: string;
+  proposalStatus?: ProposalStatus;
+  paymentVerificationStatus?: PaymentVerificationStatus;
 }
 
 export interface OutreachDraft {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildMosesContext, generateMosesResponse, MOSES_COLLECTION_NAMES, selectRelevantCollections } from "@/lib/ai";
+import { isSkeemRelated, summariseSkeemPipeline, type OutreachRecord, type SkeemLeadLike } from "@/lib/skeem";
 import {
   dbConfigured,
   resolveWorkspaceForUser,
@@ -55,7 +56,25 @@ export async function POST(req: Request) {
       })
     );
 
-    const context = buildMosesContext({ activeSection: requestedSection, collections });
+    // SKEEM cadence maths needs the FULL lead and outreach history, not the short
+    // preview used for prompt context, so it is read separately and summarised
+    // server-side. If either read fails the AI is told it is unavailable.
+    let skeem: Parameters<typeof buildMosesContext>[0]["skeem"];
+    if (isSkeemRelated(message, requestedSection)) {
+      const [leadRead, outreachRead] = await Promise.allSettled([
+        listRecords("leads", workspaceId, 500),
+        listRecords("outreach", workspaceId, 500)
+      ]);
+      if (leadRead.status === "fulfilled" && outreachRead.status === "fulfilled") {
+        const digest = summariseSkeemPipeline(leadRead.value as SkeemLeadLike[], outreachRead.value as OutreachRecord[]);
+        const capped = leadRead.value.length >= 500 || outreachRead.value.length >= 500;
+        skeem = capped ? { ...digest, note: digest.note + " Warning: record limit reached; the digest may be incomplete." } : digest;
+      } else {
+        skeem = { status: "unavailable", reason: "Lead or outreach records could not be read, so SKEEM cadence status is unknown. Do not assume it." };
+      }
+    }
+
+    const context = buildMosesContext({ activeSection: requestedSection, collections, skeem });
     const profileName = typeof user.user_metadata?.moses_name === 'string' ? user.user_metadata.moses_name.trim().slice(0, 40) : '';
     const result = await generateMosesResponse(message, context, profileName);
     const contextDiagnostics = {
