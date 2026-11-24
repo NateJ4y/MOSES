@@ -84,7 +84,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
     return (
       <Shell>
         <h1 className="text-xl font-semibold">Choose a workspace</h1>
-        <div className="text-zinc-900"><WorkspaceSwitcher workspaces={access.workspaces || []} /></div>
+        <WorkspaceSwitcher dark workspaces={access.workspaces || []} />
         {footer}
       </Shell>
     );

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 export interface AccessWorkspace { id: string; name: string; role: string; status: string }
 
-export function WorkspaceSwitcher({ workspaces, activeId }: { workspaces: AccessWorkspace[]; activeId?: string | null }) {
+export function WorkspaceSwitcher({ workspaces, activeId, dark = false }: { workspaces: AccessWorkspace[]; activeId?: string | null; dark?: boolean }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
   const active = workspaces.filter((w) => w.status === 'active');
@@ -30,9 +30,13 @@ export function WorkspaceSwitcher({ workspaces, activeId }: { workspaces: Access
     <div className="space-y-2">
       {active.map((w) => (
         <button key={w.id} type="button" disabled={busy !== null || w.id === activeId} onClick={() => choose(w.id)}
-          className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors ${w.id === activeId ? 'border-black bg-zinc-100' : 'border-zinc-300 hover:border-zinc-500'} disabled:opacity-60`}>
-          <span className="font-semibold">{w.name}</span>
-          <span className="text-[10px] uppercase tracking-wider text-zinc-500">{w.id === activeId ? 'Active · ' : ''}{w.role}</span>
+          className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm transition-colors disabled:opacity-60 ${
+            dark
+              ? `text-white ${w.id === activeId ? 'border-white bg-white/10' : 'border-white/30 hover:border-white'}`
+              : `text-zinc-900 ${w.id === activeId ? 'border-black bg-zinc-100' : 'border-zinc-300 hover:border-zinc-500'}`
+          }`}>
+          <span className="font-semibold">{w.name} <span className={`font-normal text-[11px] ${dark ? 'text-zinc-400' : 'text-zinc-500'}`}>· {w.id.slice(0, 8)}</span></span>
+          <span className={`text-[10px] uppercase tracking-wider ${dark ? 'text-zinc-400' : 'text-zinc-500'}`}>{w.id === activeId ? 'Active · ' : ''}{w.role}</span>
         </button>
       ))}
       {error && <p className="text-xs text-red-600">{error}</p>}
