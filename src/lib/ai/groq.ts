@@ -2,8 +2,8 @@ import type { MosesAIResult, MosesContext } from './types';
 import { serializeMosesContext } from './context';
 import { skeemSystemInstructions } from '../skeem';
 
-const MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
-const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+export const MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
+export const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
 const SYSTEM_INSTRUCTION = `You are MOSES, the operating intelligence for Coalesce Digital.
 

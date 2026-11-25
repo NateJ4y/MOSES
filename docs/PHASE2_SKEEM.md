@@ -21,3 +21,28 @@ Prices and packages, commission on recurring payments, who approves concepts, tu
 - Deleting a lead keeps its outreach and activity history (kept as an audit trail; it is ignored by the pipeline summary).
 - The AI summary covers up to 500 leads/records and shows the 10 most urgent leads.
 - The Outreach screen has not been exercised against a live database in my sandbox.
+
+
+---
+
+## Update: owner decisions and the AI coach
+
+**Confirmed by the owner (now in the code):**
+- **Counting days:** Monday to Saturday. Sunday is not counted. Day 4 is three counting days after the first outreach; Day 10 is nine. (South African time.)
+- **Prices:** Local (South Africa) R1,600; Africa outside South Africa $100; International (outside Africa) $1,000. Set per lead as a *price region*.
+- **Commission:** 15%.
+- **Concepts:** the super admin approves every concept request and sets the turnaround. Anyone can request; only the super admin can approve or set a due date. This is enforced on the server as well as in the screen.
+
+**Still not recorded (so SKEEM will not guess):** what each price buys (scope), whether it is once-off or recurring, whether 15% applies to recurring payments, onboarding/deposit terms.
+
+**The screen was rebuilt around a conversation:**
+- A prospect list that sorts by who needs you today (due, overdue, not started).
+- A "next move" card that says what is due and offers one click to have SKEEM do it.
+- A coach you can talk to: "Draft my next message", "They replied…" (logs their reply and gets advice), "Handle an objection", "Plan my follow-up", or free text.
+- Replies from the coach are structured: what is going on, the stage and why, advice, editable drafts, what it needs from you, and the next move.
+- Every draft is checked automatically (opt-out, claiming a concept that does not exist, wrong price for the region, unknown links, "free website" wording).
+- If the AI is unavailable, a template "Quick draft" still works.
+
+**How the AI is grounded:** the server reads the lead and its history from the database itself, works out the cadence, and gives the AI only those facts. The AI cannot send anything or write records. Anything pasted by a prospect is treated as data, not instructions.
+
+**Limits:** the coach conversation itself is not saved (the history and activity are); concept approval is enforced for new changes but older records are not re-checked; there is no browser test of the screen yet (it is render-tested).

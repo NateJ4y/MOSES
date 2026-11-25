@@ -6,12 +6,16 @@
  * browser, in API routes and in tests.
  *
  * Source: COALESCE-SKEEM-Script-Sheet.pptx as summarised in the MOSES handoff.
- * Anything the product owner has NOT confirmed (prices, commission on
- * recurring payments, concept approval owner, turnaround, regional pricebooks)
- * is deliberately NOT encoded here. See OPEN_POLICIES.
+ * Confirmed by the product owner: counting days Monday to Saturday, the three
+ * regional price points, 15% commission, and that the super admin approves
+ * concepts and sets their turnaround. Anything still unconfirmed is listed in
+ * OPEN_POLICIES and must not be guessed.
  */
 
-export const SKEEM_VERSION = 1;
+import { COMMISSION_RATE, PRICEBOOK, PRICE_REGIONS, PRICE_SCOPE_RECORDED, priceFor, type PriceRegion } from './pricebook';
+export * from './pricebook';
+
+export const SKEEM_VERSION = 2;
 export const SKEEM_PRINCIPLE = 'Claim, contact, update.';
 
 // ---------------------------------------------------------------- stages ----
@@ -78,7 +82,7 @@ export const SKEEM_STAGES: readonly SkeemStage[] = [
     guardrails: [
       'Only connect a need that is verified.',
       'Ask permission before preparing a concept where the process requires it.',
-      'Do not quote prices: there is no validated pricebook in MOSES yet.'
+      'Do not raise price before a need is verified and the prospect is interested.'
     ],
     nextActions: ['Reflect the stated need', 'Ask for permission to prepare a concept', 'Record the answer']
   },
@@ -90,7 +94,8 @@ export const SKEEM_STAGES: readonly SkeemStage[] = [
     guardrails: [
       'A concept must actually exist, be checked and have a usable delivery link before MOSES says it is ready or delivered.',
       'Never describe a concept as a completed website or imply the finished service is free.',
-      'A concept request is not a completed concept.'
+      'A concept request is not a completed concept.',
+      'Only the super admin approves a concept request and sets its turnaround. Do not promise a turnaround that is not recorded.'
     ],
     nextActions: ['Request the concept', 'Quality-check before sharing', 'Record the delivery link and delivery date']
   },
@@ -102,7 +107,8 @@ export const SKEEM_STAGES: readonly SkeemStage[] = [
     guardrails: [
       'Handle objections honestly; never manufacture urgency.',
       'A verbal yes is not a confirmed sale.',
-      'Quote only from a validated, versioned pricebook. None exists yet, so do not quote prices.'
+      'Quote only the regional price point for the lead\'s recorded region. If the region is not set, ask; do not guess.',
+      'The price scope and billing frequency are not recorded yet, so do not describe what it includes or whether it recurs.'
     ],
     nextActions: ['Prepare the proposal', 'Record objections and answers', 'Agree and record the decision date']
   },
@@ -134,10 +140,9 @@ export const SKEEM_GLOBAL_GUARDRAILS: readonly string[] = [
 
 /** Items the product owner has not confirmed. MOSES must not guess these. */
 export const OPEN_POLICIES: readonly string[] = [
-  'Prices and packages: no validated, versioned pricebook exists in MOSES. Do not quote prices.',
-  'Commission: 15% on closed sales was the earlier plan, but commission on recurring payments is not confirmed. Do not calculate or promise it.',
-  'Who approves concept requests, concept turnaround, onboarding and deposit terms, hosting/domain terms, and regional pricebooks are not confirmed.',
-  'The cold-outreach day numbering (Day 1, Day 4, Day 10) is treated as calendar days counted from the first outreach (Day 1). Confirm this with the product owner.'
+  'Price scope: the regional price points are confirmed, but what each price includes and whether it is once-off or recurring is not recorded. State the amount and region only.',
+  'Commission is 15%. Whether it also applies to recurring or monthly payments is not confirmed, so do not calculate or promise commission on recurring payments.',
+  'Onboarding and deposit terms and hosting/domain terms are not confirmed.'
 ];
 
 const STAGE_ORDER: SkeemStageId[] = SKEEM_STAGES.map((s) => s.id);
@@ -221,6 +226,9 @@ export interface SkeemLeadLike {
   conceptUrl?: string;
   proposalStatus?: ProposalStatus;
   paymentVerificationStatus?: PaymentVerificationStatus;
+  priceRegion?: PriceRegion;
+  location?: string;
+  conceptDueDate?: string;
   nextAction?: string;
   followUpDate?: string;
   lastContact?: string;
@@ -246,9 +254,33 @@ export function canContact(lead: Pick<SkeemLeadLike, 'contactRestriction'>): boo
   return lead.contactRestriction !== 'OPT_OUT';
 }
 
+// ---------------------------------------------- Monday-to-Saturday days ----
+
+const SAST_OFFSET_MS = 2 * HOUR_MS; // South Africa has no daylight saving.
+
+/** 0 = Sunday … 6 = Saturday, in South African time. */
+export function sastWeekday(value: number | Date | string): number {
+  const ms = toMs(value) ?? Date.now();
+  return new Date(ms + SAST_OFFSET_MS).getUTCDay();
+}
+/** SKEEM counts Monday to Saturday. Sunday is not a counting day. */
+export function isCountingDay(value: number | Date | string): boolean {
+  return sastWeekday(value) !== 0;
+}
+/** Move forward n counting days, skipping Sundays. Time of day is preserved. */
+export function addCountingDays(start: number | Date | string, n: number): number {
+  let t = toMs(start) ?? Date.now();
+  let counted = 0;
+  while (counted < n) {
+    t += DAY_MS;
+    if (isCountingDay(t)) counted++;
+  }
+  return t;
+}
+
 // ------------------------------------------------------- cold-out cadence ----
 
-/** Calendar-day offsets from the first outreach: Day 1, Day 4, Day 10. */
+/** Counting-day offsets (Monday to Saturday) from the first outreach: Day 1, Day 4, Day 10. */
 export const COLD_TOUCH_OFFSET_DAYS = [0, 3, 9] as const;
 export const COLD_TOUCH_NAMES = ['FIRST_OUTREACH', 'SOFT_NUDGE', 'FINAL_TOUCH'] as const;
 export type ColdTouchName = (typeof COLD_TOUCH_NAMES)[number];
@@ -324,7 +356,7 @@ export function coldSequenceStatus(
   }
 
   const index = sent.length;
-  const dueMs = (firstT as number) + COLD_TOUCH_OFFSET_DAYS[index] * DAY_MS;
+  const dueMs = addCountingDays(firstT as number, COLD_TOUCH_OFFSET_DAYS[index]);
   const due = nowMs >= dueMs;
   return { ...base, state: 'IN_PROGRESS', touchesSent: sent.length, firstSentAt: iso(firstT), lastSentAt: iso(lastT),
     next: COLD_TOUCH_NAMES[index], dueAt: iso(dueMs), due,
@@ -403,6 +435,30 @@ export function canMarkWon(lead: Pick<SkeemLeadLike, 'paymentVerificationStatus'
   return lead.paymentVerificationStatus === 'VERIFIED'
     ? { ok: true, reason: 'Payment verified.' }
     : { ok: false, reason: 'Payment or commercial confirmation has not been verified.' };
+}
+
+const APPROVED_OR_LATER: ConceptStatus[] = ['APPROVED', 'IN_CREATION', 'QUALITY_CHECKED', 'DELIVERED'];
+
+/**
+ * Only the super admin approves a concept request and sets its turnaround.
+ * Anyone may REQUEST a concept; nobody else may move a lead into an approved
+ * (or later) concept state, or change the approval/turnaround fields.
+ */
+export function conceptChangeAllowed(
+  prev: Pick<SkeemLeadLike, 'conceptStatus' | 'conceptDueDate'> | undefined,
+  next: Pick<SkeemLeadLike, 'conceptStatus' | 'conceptDueDate'> & { conceptApprovedBy?: string },
+  isSuperAdmin: boolean
+): { ok: boolean; reason?: string } {
+  if (isSuperAdmin) return { ok: true };
+  const was = prev?.conceptStatus || 'NONE';
+  const now = next.conceptStatus || 'NONE';
+  if (APPROVED_OR_LATER.includes(now) && !APPROVED_OR_LATER.includes(was)) {
+    return { ok: false, reason: 'Only the super admin can approve a concept request.' };
+  }
+  if (next.conceptDueDate && next.conceptDueDate !== prev?.conceptDueDate) {
+    return { ok: false, reason: 'Only the super admin can set a concept turnaround.' };
+  }
+  return { ok: true };
 }
 
 /** A concept is only "ready" or "delivered" when it is checked and has a link. */
@@ -500,6 +556,37 @@ export function summariseSkeemPipeline(
   };
 }
 
+// ------------------------------------------------------ draft linting ----
+
+export interface DraftLint { level: 'warn' | 'block'; message: string }
+
+const MONEY = /(R|\$|USD|ZAR)\s?(\d[\d,. ]*\d|\d)/gi;
+
+/** Deterministic checks on any drafted message, human or AI written. */
+export function lintDraft(body: string, lead: SkeemLeadLike): DraftLint[] {
+  const out: DraftLint[] = [];
+  const text = body || '';
+  if (!canContact(lead)) out.push({ level: 'block', message: 'This lead has opted out. Do not send anything.' });
+  if (/\bfree\b[^.\n]{0,25}\b(website|site|web design)\b/i.test(text) && !/concept/i.test(text)) {
+    out.push({ level: 'warn', message: 'This could read as a free finished website. Only the concept is free and no-obligation.' });
+  }
+  const claimsConcept = /(here('| i)?s|attached|ready|prepared|done)[^.\n]{0,40}\bconcept\b|\bconcept\b[^.\n]{0,25}\b(is )?(ready|done|complete|attached)\b/i.test(text);
+  if (claimsConcept && !conceptCanBeShared(lead)) {
+    out.push({ level: 'block', message: 'This says a concept exists, but none is recorded as quality-checked with a link.' });
+  }
+  const links = text.match(/https?:\/\/\S+/gi) || [];
+  if (links.some((l) => !lead.conceptUrl || !l.startsWith(lead.conceptUrl.trim().replace(/[.,)]+$/, '')))) {
+    out.push({ level: 'warn', message: 'Contains a link that is not the recorded concept link. Check it before sending.' });
+  }
+  const amounts = [...text.matchAll(MONEY)].map((m) => Number(m[2].replace(/[ ,]/g, '')));
+  if (amounts.length) {
+    const point = priceFor(lead.priceRegion);
+    if (!point) out.push({ level: 'warn', message: 'A price is quoted but this lead\'s price region is not set.' });
+    else if (amounts.some((a) => a !== point.amount)) out.push({ level: 'warn', message: `A quoted amount does not match the ${point.label} price (${point.display}).` });
+  }
+  return out;
+}
+
 // --------------------------------------------------- AI term routing ----
 
 export const SKEEM_TERMS = /\b(skeem|agents?|prospects?|leads?|follow.?ups?|nudge|touch(?:es)?|concepts?|proposals?|objections?|commissions?|handover|hand.?over|opt.?out|do not contact|cold (?:outreach|message)|outreach|stage)\b/i;
@@ -519,9 +606,12 @@ export function skeemSystemInstructions(): string {
     stages,
     'Guardrails:',
     ...SKEEM_GLOBAL_GUARDRAILS.map((g) => '- ' + g),
-    'Cadence (cold outreach): first outreach Day 1, soft nudge Day 4, final touch Day 10, counted from the first outreach. After three unanswered touches stop and move the lead to Lost or Nurture. A Lost lead may be considered for re-engagement after 60 days if no opt-out applies. The post-concept cadence is separate: positive response, prepare the proposal within 24 hours; neutral, ask a specific question after 48 to 72 hours; no response, a short yes/no follow-up after 72 hours.',
+    'Cadence (cold outreach): first outreach Day 1, soft nudge Day 4, final touch Day 10, counted from the first outreach. Days are counted Monday to Saturday; Sunday is not counted. After three unanswered touches stop and move the lead to Lost or Nurture. A Lost lead may be considered for re-engagement after 60 days if no opt-out applies. The post-concept cadence is separate: positive response, prepare the proposal within 24 hours; neutral, ask a specific question after 48 to 72 hours; no response, a short yes/no follow-up after 72 hours.',
     'State separation: CRM status (NEW, QUALIFIED, CONTACTED, ...) is not the SKEEM stage. A draft is not sent. A copied message is not sent. A concept request is not a delivered concept. A verbal yes is not a verified sale.',
     'Use the "skeem" pipeline digest in the context for stage, cadence and due dates. It is computed by MOSES from saved records; do not recompute dates from memory. If a lead has no SKEEM stage recorded, say it is not set rather than guessing one.',
+    'Pricing (confirmed by the owner): ' + PRICE_REGIONS.map((r) => `${PRICEBOOK[r].label} ${PRICEBOOK[r].display}`).join('; ') + '. Use the price for the lead\'s recorded priceRegion only. If priceRegion is not set, ask which region applies. ' + (PRICE_SCOPE_RECORDED ? '' : 'The scope and billing frequency are not recorded: state amount and region only, and say Coalesce will confirm what is included.'),
+    `Commission: ${Math.round(COMMISSION_RATE * 100)}% on closed sales.`,
+    'Concepts: the super admin approves every concept request and sets the turnaround. Agents can request a concept but cannot approve one. Never promise a turnaround that is not recorded as conceptDueDate on the lead.',
     'Unconfirmed policies — never guess these:',
     ...OPEN_POLICIES.map((p) => '- ' + p)
   ].join('\n');

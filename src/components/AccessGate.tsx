@@ -2,6 +2,7 @@
 
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { WorkspaceSwitcher, type AccessWorkspace } from './WorkspaceSwitcher';
+import { AccessContext } from './AccessContext';
 
 interface Access {
   authenticated?: boolean;
@@ -67,7 +68,9 @@ export function AccessGate({ children }: { children: ReactNode }) {
   }
 
   if (!access) return <Shell><p className="text-sm text-zinc-400">Checking access…</p></Shell>;
-  if (access.workspaceId) return <>{children}</>;
+  if (access.workspaceId) {
+    return <AccessContext.Provider value={{ isPlatformAdmin: !!access.isPlatformAdmin, email: access.user?.email }}>{children}</AccessContext.Provider>;
+  }
 
   const footer = (
     <div className="flex justify-between text-xs text-zinc-400 pt-2">

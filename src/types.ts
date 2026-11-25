@@ -1,5 +1,5 @@
 import type {
-  SkeemStageId, ContactRestriction, ConceptStatus, ProposalStatus, PaymentVerificationStatus
+  SkeemStageId, ContactRestriction, ConceptStatus, ProposalStatus, PaymentVerificationStatus, PriceRegion
 } from './lib/skeem';
 export type {
   SkeemStageId, ContactRestriction, ConceptStatus, ProposalStatus, PaymentVerificationStatus,
@@ -76,6 +76,10 @@ export interface Lead {
   conceptUrl?: string;
   proposalStatus?: ProposalStatus;
   paymentVerificationStatus?: PaymentVerificationStatus;
+  priceRegion?: PriceRegion;
+  conceptDueDate?: string;
+  conceptApprovedBy?: string;
+  conceptApprovedAt?: string;
 }
 
 export interface OutreachDraft {

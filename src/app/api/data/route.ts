@@ -7,11 +7,34 @@ import {
   listRecords,
   replaceRecords,
   upsertRecords,
+  isPlatformAdmin,
   WorkspaceAuthorizationError,
   isSameOriginRequest
 } from '@/lib/db/server';
 
+import { conceptChangeAllowed } from '@/lib/skeem';
+
 export const dynamic = 'force-dynamic';
+
+// Only the super admin may approve a concept or set its turnaround. This is
+// checked here, on the server, so it cannot be bypassed from the browser.
+async function conceptApprovalViolation(collection: string, userId: string, workspaceId: string, records: unknown[]): Promise<string | null> {
+  if (collection !== 'leads') return null;
+  if (await isPlatformAdmin(userId)) return null;
+  let existing: Array<Record<string, unknown>> = [];
+  try { existing = await listRecords('leads', workspaceId, 500) as Array<Record<string, unknown>>; } catch { existing = []; }
+  const byId = new Map(existing.map((l) => [String(l.id), l]));
+  for (const record of records as Array<Record<string, unknown>>) {
+    const prev = byId.get(String(record?.id));
+    const verdict = conceptChangeAllowed(
+      prev as Parameters<typeof conceptChangeAllowed>[0],
+      record as Parameters<typeof conceptChangeAllowed>[1],
+      false
+    );
+    if (!verdict.ok) return verdict.reason || 'Not allowed.';
+  }
+  return null;
+}
 
 const allowed = new Set([
   'companies', 'contacts', 'leads', 'clients', 'client_dna', 'projects', 'tasks',
@@ -85,6 +108,8 @@ export async function PUT(request: NextRequest) {
     if (!canWrite(role)) return NextResponse.json({ error: 'Your workspace role does not allow changes.' }, { status: 403 });
 
     const records = recordsFromBody(await request.json());
+    const violation = await conceptApprovalViolation(collection, user.id, workspaceId, records);
+    if (violation) return NextResponse.json({ error: violation }, { status: 403 });
     const result = await replaceRecords(collection, workspaceId, records);
     return NextResponse.json({ configured: true, result });
   } catch (error) {
@@ -104,6 +129,8 @@ export async function POST(request: NextRequest) {
     if (!canWrite(role)) return NextResponse.json({ error: 'Your workspace role does not allow changes.' }, { status: 403 });
 
     const records = recordsFromBody(await request.json());
+    const violation = await conceptApprovalViolation(collection, user.id, workspaceId, records);
+    if (violation) return NextResponse.json({ error: violation }, { status: 403 });
     const result = await upsertRecords(collection, workspaceId, records);
     return NextResponse.json({ configured: true, result });
   } catch (error) {
